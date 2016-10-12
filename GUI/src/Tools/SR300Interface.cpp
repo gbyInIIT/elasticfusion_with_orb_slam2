@@ -16,285 +16,161 @@
  *
  */
 
-#include "OpenNI2Interface.h"
+#include "SR300Interface.h"
 
-OpenNI2Interface::OpenNI2Interface(int inWidth, int inHeight, int fps)
+SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
  : width(inWidth),
    height(inHeight),
    fps(fps),
    initSuccessful(true)
 {
-    //Setup
-    openni::Status rc = openni::STATUS_OK;
-
-    const char * deviceURI = openni::ANY_DEVICE;
-
-    rc = openni::OpenNI::initialize();
-
-    std::string errorString(openni::OpenNI::getExtendedError());
-
-    if(errorString.length() > 0)
-    {
-        errorText.append(errorString);
-        initSuccessful = false;
+    // Create a context object. This object owns the handles to all connected realsense devices.
+    printf("There are %d connected RealSense devices.\n", ctx.get_device_count());
+    if(ctx.get_device_count() == 0) {
+        fprintf(stderr, "No device found!");
     }
-    else
-    {
-        rc = device.open(deviceURI);
-        if (rc != openni::STATUS_OK)
-        {
-            errorText.append(openni::OpenNI::getExtendedError());
-            openni::OpenNI::shutdown();
-            initSuccessful = false;
-        }
-        else
-        {
-            openni::VideoMode depthMode;
-            depthMode.setFps(fps);
-            depthMode.setPixelFormat(openni::PIXEL_FORMAT_DEPTH_1_MM);
-            depthMode.setResolution(width, height);
+    // This tutorial will access only a single device, but it is trivial to extend to multiple devices
+    dev = ctx.get_device(0);
+    printf("\nUsing device 0, an %s\n", dev->get_name());
+    printf("    Serial number: %s\n", dev->get_serial());
+    printf("    Firmware version: %s\n", dev->get_firmware_version());
 
-            openni::VideoMode colorMode;
-            colorMode.setFps(fps);
-            colorMode.setPixelFormat(openni::PIXEL_FORMAT_RGB888);
-            colorMode.setResolution(width, height);
-
-            rc = depthStream.create(device, openni::SENSOR_DEPTH);
-            if (rc == openni::STATUS_OK)
-            {
-                depthStream.setVideoMode(depthMode);
-                rc = depthStream.start();
-                if (rc != openni::STATUS_OK)
-                {
-                    errorText.append(openni::OpenNI::getExtendedError());
-                    depthStream.destroy();
-                    initSuccessful = false;
-                }
-            }
-            else
-            {
-                errorText.append(openni::OpenNI::getExtendedError());
-                initSuccessful = false;
-            }
-
-            rc = rgbStream.create(device, openni::SENSOR_COLOR);
-            if (rc == openni::STATUS_OK)
-            {
-                rgbStream.setVideoMode(colorMode);
-                rc = rgbStream.start();
-                if (rc != openni::STATUS_OK)
-                {
-                    errorText.append(openni::OpenNI::getExtendedError());
-                    rgbStream.destroy();
-                    initSuccessful = false;
-                }
-            }
-            else
-            {
-                errorText.append(openni::OpenNI::getExtendedError());
-                initSuccessful = false;
-            }
-
-            if (!depthStream.isValid() || !rgbStream.isValid())
-            {
-                errorText.append(openni::OpenNI::getExtendedError());
-                openni::OpenNI::shutdown();
-                initSuccessful = false;
-            }
-
-            if(initSuccessful)
-            {
-                //For printing out
-                formatMap[openni::PIXEL_FORMAT_DEPTH_1_MM] = "1mm";
-                formatMap[openni::PIXEL_FORMAT_DEPTH_100_UM] = "100um";
-                formatMap[openni::PIXEL_FORMAT_SHIFT_9_2] = "Shift 9 2";
-                formatMap[openni::PIXEL_FORMAT_SHIFT_9_3] = "Shift 9 3";
-
-                formatMap[openni::PIXEL_FORMAT_RGB888] = "RGB888";
-                formatMap[openni::PIXEL_FORMAT_YUV422] = "YUV422";
-                formatMap[openni::PIXEL_FORMAT_GRAY8] = "GRAY8";
-                formatMap[openni::PIXEL_FORMAT_GRAY16] = "GRAY16";
-                formatMap[openni::PIXEL_FORMAT_JPEG] = "JPEG";
-
-                assert(findMode(width, height, fps) && "Sorry, mode not supported!");
-
-                latestDepthIndex.assign(-1);
-                latestRgbIndex.assign(-1);
-
-                for(int i = 0; i < numBuffers; i++)
-                {
-                    uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
-                    rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newImage, 0);
-                }
-
-                for(int i = 0; i < numBuffers; i++)
-                {
-                    uint8_t * newDepth = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
-                    uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
-                    frameBuffers[i] = std::pair<std::pair<uint8_t *, uint8_t *>, int64_t>(std::pair<uint8_t *, uint8_t *>(newDepth, newImage), 0);
-                }
-
-                rgbCallback = new RGBCallback(lastRgbTime,
-                                              latestRgbIndex,
-                                              rgbBuffers);
-
-                depthCallback = new DepthCallback(lastDepthTime,
-                                                  latestDepthIndex,
-                                                  latestRgbIndex,
-                                                  rgbBuffers,
-                                                  frameBuffers);
-
-                depthStream.setMirroringEnabled(false);
-                rgbStream.setMirroringEnabled(false);
-
-                device.setDepthColorSyncEnabled(true);
-                device.setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
-
-                setAutoExposure(true);
-                setAutoWhiteBalance(true);
-
-                rgbStream.addNewFrameListener(rgbCallback);
-                depthStream.addNewFrameListener(depthCallback);
-            }
-        }
+    // Configure all streams to run at VGA resolution at 60 frames per second
+    dev->enable_stream(rs::stream::depth, inWidth, inHeight, rs::format::z16, fps);
+    dev->enable_stream(rs::stream::color, inWidth, inHeight, rs::format::rgb8, fps);
+    dev->enable_stream(rs::stream::infrared, inWidth, inHeight, rs::format::y8, fps);
+    try { dev->enable_stream(rs::stream::infrared2, inWidth, inHeight, rs::format::y8, fps); }
+    catch(...) { printf("Device does not provide infrared2 stream.\n"); }
+    initSuccessful = true;
+    latestDepthIndex.assign(-1);
+    latestRgbIndex.assign(-1);
+    for(int i = 0; i < numBuffers; i++) {
+        uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
+        rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newImage, 0);
     }
+    for(int i = 0; i < numBuffers; i++) {
+        uint8_t * newDepth = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
+        uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
+        frameBuffers[i] = std::pair<std::pair<uint8_t *, uint8_t *>, int64_t>(std::pair<uint8_t *, uint8_t *>(newDepth, newImage), 0);
+    }
+    auto depth_callback = [this](rs::frame frame) {
+        lastDepthTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+        int bufferIndex = (latestDepthIndex.getValue() + 1) % numBuffers;
+        memcpy(frameBuffers[bufferIndex].first.first, frame.get_data(), frame.get_width() * frame.get_height() * 2);
+        frameBuffers[bufferIndex].second = lastDepthTime;
+        int lastImageVal = latestRgbIndex.getValue();
+        if(lastImageVal == -1) {
+            return;
+        }
+        lastImageVal %= numBuffers;
+        memcpy(frameBuffers[bufferIndex].first.second, rgbBuffers[lastImageVal].first, frame.get_width() * frame.get_height() * 3);
+        latestDepthIndex++;
+    };
+    dev->set_frame_callback(rs::stream::depth, depth_callback);
+    auto color_callback = [this](rs::frame frame) {
+        lastRgbTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+        int bufferIndex = (latestRgbIndex.getValue() + 1) % numBuffers;
+        memcpy(rgbBuffers[bufferIndex].first, frame.get_data(), frame.get_width() * frame.get_height() * 3);
+        rgbBuffers[bufferIndex].second = lastRgbTime;
+        latestRgbIndex++;
+    };
+    dev->set_frame_callback(rs::stream::color, color_callback);
+    dev->start();
 }
 
-OpenNI2Interface::~OpenNI2Interface()
+SR300Interface::~SR300Interface()
 {
     if(initSuccessful)
     {
-        rgbStream.removeNewFrameListener(rgbCallback);
-        depthStream.removeNewFrameListener(depthCallback);
-
-        depthStream.stop();
-        rgbStream.stop();
-        depthStream.destroy();
-        rgbStream.destroy();
-        device.close();
-        openni::OpenNI::shutdown();
-
-        for(int i = 0; i < numBuffers; i++)
-        {
+        printf("SR300Interface dead.");
+        dev->stop();
+        dev->disable_stream(rs::stream::depth);
+        dev->disable_stream(rs::stream::color);
+        dev->disable_stream(rs::stream::infrared);
+        try { dev->disable_stream(rs::stream::infrared2);}
+        catch(...) { printf("Device does not provide infrared2 stream.\n"); }
+        for(int i = 0; i < numBuffers; i++) {
             free(rgbBuffers[i].first);
         }
-
-        for(int i = 0; i < numBuffers; i++)
-        {
+        for(int i = 0; i < numBuffers; i++) {
             free(frameBuffers[i].first.first);
             free(frameBuffers[i].first.second);
         }
-
-        delete rgbCallback;
-        delete depthCallback;
     }
 }
 
-bool OpenNI2Interface::findMode(int x, int y, int fps)
+bool SR300Interface::findMode(int x, int y, int fps)
 {
-    const openni::Array<openni::VideoMode> & depthModes = depthStream.getSensorInfo().getSupportedVideoModes();
-
-    bool found = false;
-
-    for(int i = 0; i < depthModes.getSize(); i++)
-    {
-        if(depthModes[i].getResolutionX() == x &&
-           depthModes[i].getResolutionY() == y &&
-           depthModes[i].getFps() == fps)
-        {
-            found = true;
-            break;
-        }
-    }
-
-    if(!found)
-    {
-        return false;
-    }
-
-    found = false;
-
-    const openni::Array<openni::VideoMode> & rgbModes = rgbStream.getSensorInfo().getSupportedVideoModes();
-
-    for(int i = 0; i < rgbModes.getSize(); i++)
-    {
-        if(rgbModes[i].getResolutionX() == x &&
-           rgbModes[i].getResolutionY() == y &&
-           rgbModes[i].getFps() == fps)
-        {
-            found = true;
-            break;
-        }
-    }
-
-    return found;
+    return true;
 }
 
-void OpenNI2Interface::printModes()
+void SR300Interface::printModes()
 {
-    const openni::Array<openni::VideoMode> & depthModes = depthStream.getSensorInfo().getSupportedVideoModes();
-
-    openni::VideoMode currentDepth = depthStream.getVideoMode();
-
-    std::cout << "Depth Modes: (" << currentDepth.getResolutionX() <<
-                                     "x" <<
-                                     currentDepth.getResolutionY() <<
-                                     " @ " <<
-                                     currentDepth.getFps() <<
-                                     "fps " <<
-                                     formatMap[currentDepth.getPixelFormat()] << ")" << std::endl;
-
-    for(int i = 0; i < depthModes.getSize(); i++)
-    {
-        std::cout << depthModes[i].getResolutionX() <<
-                     "x" <<
-                     depthModes[i].getResolutionY() <<
-                     " @ " <<
-                     depthModes[i].getFps() <<
-                     "fps " <<
-                     formatMap[depthModes[i].getPixelFormat()] << std::endl;
-    }
-
-    const openni::Array<openni::VideoMode> & rgbModes = rgbStream.getSensorInfo().getSupportedVideoModes();
-
-    openni::VideoMode currentRGB = depthStream.getVideoMode();
-
-    std::cout << "RGB Modes: (" << currentRGB.getResolutionX() <<
-                                   "x" <<
-                                   currentRGB.getResolutionY() <<
-                                   " @ " <<
-                                   currentRGB.getFps() <<
-                                   "fps " <<
-                                   formatMap[currentRGB.getPixelFormat()] << ")" << std::endl;
-
-    for(int i = 0; i < rgbModes.getSize(); i++)
-    {
-        std::cout << rgbModes[i].getResolutionX() <<
-                     "x" <<
-                     rgbModes[i].getResolutionY() <<
-                     " @ " <<
-                     rgbModes[i].getFps() <<
-                     "fps " <<
-                     formatMap[rgbModes[i].getPixelFormat()] << std::endl;
-    }
+//    const openni::Array<openni::VideoMode> & depthModes = depthStream.getSensorInfo().getSupportedVideoModes();
+//
+//    openni::VideoMode currentDepth = depthStream.getVideoMode();
+//
+//    std::cout << "Depth Modes: (" << currentDepth.getResolutionX() <<
+//                                     "x" <<
+//                                     currentDepth.getResolutionY() <<
+//                                     " @ " <<
+//                                     currentDepth.getFps() <<
+//                                     "fps " <<
+//                                     formatMap[currentDepth.getPixelFormat()] << ")" << std::endl;
+//
+//    for(int i = 0; i < depthModes.getSize(); i++)
+//    {
+//        std::cout << depthModes[i].getResolutionX() <<
+//                     "x" <<
+//                     depthModes[i].getResolutionY() <<
+//                     " @ " <<
+//                     depthModes[i].getFps() <<
+//                     "fps " <<
+//                     formatMap[depthModes[i].getPixelFormat()] << std::endl;
+//    }
+//
+//    const openni::Array<openni::VideoMode> & rgbModes = rgbStream.getSensorInfo().getSupportedVideoModes();
+//
+//    openni::VideoMode currentRGB = depthStream.getVideoMode();
+//
+//    std::cout << "RGB Modes: (" << currentRGB.getResolutionX() <<
+//                                   "x" <<
+//                                   currentRGB.getResolutionY() <<
+//                                   " @ " <<
+//                                   currentRGB.getFps() <<
+//                                   "fps " <<
+//                                   formatMap[currentRGB.getPixelFormat()] << ")" << std::endl;
+//
+//    for(int i = 0; i < rgbModes.getSize(); i++)
+//    {
+//        std::cout << rgbModes[i].getResolutionX() <<
+//                     "x" <<
+//                     rgbModes[i].getResolutionY() <<
+//                     " @ " <<
+//                     rgbModes[i].getFps() <<
+//                     "fps " <<
+//                     formatMap[rgbModes[i].getPixelFormat()] << std::endl;
+//    }
 }
 
-void OpenNI2Interface::setAutoExposure(bool value)
+void SR300Interface::setAutoExposure(bool value)
 {
-    rgbStream.getCameraSettings()->setAutoExposureEnabled(value);
+//    rgbStream.getCameraSettings()->setAutoExposureEnabled(value);
 }
 
-void OpenNI2Interface::setAutoWhiteBalance(bool value)
+void SR300Interface::setAutoWhiteBalance(bool value)
 {
-    rgbStream.getCameraSettings()->setAutoWhiteBalanceEnabled(value);
+//    rgbStream.getCameraSettings()->setAutoWhiteBalanceEnabled(value);
 }
 
-bool OpenNI2Interface::getAutoExposure()
+bool SR300Interface::getAutoExposure()
 {
-    return rgbStream.getCameraSettings()->getAutoExposureEnabled();
+//    return rgbStream.getCameraSettings()->getAutoExposureEnabled();
+    return true;
 }
 
-bool OpenNI2Interface::getAutoWhiteBalance()
+bool SR300Interface::getAutoWhiteBalance()
 {
-    return rgbStream.getCameraSettings()->getAutoWhiteBalanceEnabled();
+//    return rgbStream.getCameraSettings()->getAutoWhiteBalanceEnabled();
+    return true;
 }

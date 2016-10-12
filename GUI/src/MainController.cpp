@@ -53,9 +53,11 @@ MainController::MainController(int argc, char * argv[])
     }
     else
     {
-        logReader = new LiveLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
+//        logReader = new LiveLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
+        logReader = new LiveLogReaderSR300(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
 
-        good = ((LiveLogReader *)logReader)->asus->ok();
+//        good = ((LiveLogReader *)logReader)->asus->ok();
+        good = ((LiveLogReaderSR300*)logReader)->asus->ok();
     }
 
     if(Parse::get().arg(argc, argv, "-p", poseFile) > 0)

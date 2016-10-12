@@ -16,23 +16,22 @@
  *
  */
 
-#ifndef OPENNI2INTERFACE_H_
-#define OPENNI2INTERFACE_H_
+#ifndef INTERFACESR300_H_
+#define INTERFACESR300_H_
 
-#include <OpenNI.h>
-#include <PS1080.h>
 #include <string>
 #include <iostream>
 #include <algorithm>
 #include <map>
 
 #include "ThreadMutexObject.h"
+#include <librealsense/rs.hpp>
 
-class OpenNI2Interface
+class SR300Interface
 {
     public:
-        OpenNI2Interface(int inWidth = 640, int inHeight = 480, int fps = 30);
-        virtual ~OpenNI2Interface();
+        SR300Interface(int inWidth = 640, int inHeight = 480, int fps = 30);
+        virtual ~SR300Interface();
 
         const int width, height, fps;
 
@@ -50,7 +49,7 @@ class OpenNI2Interface
 
         std::string error()
         {
-            errorText.erase(std::remove_if(errorText.begin(), errorText.end(), &OpenNI2Interface::isTab), errorText.end());
+            errorText.erase(std::remove_if(errorText.begin(), errorText.end(), &SR300Interface::isTab), errorText.end());
             return errorText;
         }
 
@@ -58,111 +57,15 @@ class OpenNI2Interface
         ThreadMutexObject<int> latestDepthIndex;
         std::pair<std::pair<uint8_t *, uint8_t *>, int64_t> frameBuffers[numBuffers];
 
-        class RGBCallback : public openni::VideoStream::NewFrameListener
-        {
-            public:
-                RGBCallback(int64_t & lastRgbTime,
-                            ThreadMutexObject<int> & latestRgbIndex,
-                            std::pair<uint8_t *, int64_t> * rgbBuffers)
-                 : lastRgbTime(lastRgbTime),
-                   latestRgbIndex(latestRgbIndex),
-                   rgbBuffers(rgbBuffers)
-                {}
-
-                virtual ~RGBCallback() {}
-
-                void onNewFrame(openni::VideoStream& stream)
-                {
-                    stream.readFrame(&frame);
-
-                    lastRgbTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
-
-                    int bufferIndex = (latestRgbIndex.getValue() + 1) % numBuffers;
-
-                    memcpy(rgbBuffers[bufferIndex].first, frame.getData(), frame.getWidth() * frame.getHeight() * 3);
-
-                    rgbBuffers[bufferIndex].second = lastRgbTime;
-
-                    latestRgbIndex++;
-                }
-
-            private:
-                openni::VideoFrameRef frame;
-                int64_t & lastRgbTime;
-                ThreadMutexObject<int> & latestRgbIndex;
-                std::pair<uint8_t *, int64_t> * rgbBuffers;
-        };
-
-        class DepthCallback : public openni::VideoStream::NewFrameListener
-        {
-            public:
-                DepthCallback(int64_t & lastDepthTime,
-                              ThreadMutexObject<int> & latestDepthIndex,
-                              ThreadMutexObject<int> & latestRgbIndex,
-                              std::pair<uint8_t *, int64_t> * rgbBuffers,
-                              std::pair<std::pair<uint8_t *, uint8_t *>, int64_t> * frameBuffers)
-                 : lastDepthTime(lastDepthTime),
-                   latestDepthIndex(latestDepthIndex),
-                   latestRgbIndex(latestRgbIndex),
-                   rgbBuffers(rgbBuffers),
-                   frameBuffers(frameBuffers)
-                {}
-
-                virtual ~DepthCallback() {}
-
-                void onNewFrame(openni::VideoStream& stream)
-                {
-                    stream.readFrame(&frame);
-
-                    lastDepthTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
-
-                    int bufferIndex = (latestDepthIndex.getValue() + 1) % numBuffers;
-
-                    memcpy(frameBuffers[bufferIndex].first.first, frame.getData(), frame.getWidth() * frame.getHeight() * 2);
-
-                    frameBuffers[bufferIndex].second = lastDepthTime;
-
-                    int lastImageVal = latestRgbIndex.getValue();
-
-                    if(lastImageVal == -1)
-                    {
-                        return;
-                    }
-
-                    lastImageVal %= numBuffers;
-
-                    memcpy(frameBuffers[bufferIndex].first.second, rgbBuffers[lastImageVal].first, frame.getWidth() * frame.getHeight() * 3);
-
-                    latestDepthIndex++;
-                }
-
-            private:
-                openni::VideoFrameRef frame;
-                int64_t & lastDepthTime;
-                ThreadMutexObject<int> & latestDepthIndex;
-                ThreadMutexObject<int> & latestRgbIndex;
-
-                std::pair<uint8_t *, int64_t> * rgbBuffers;
-                std::pair<std::pair<uint8_t *, uint8_t *>, int64_t> * frameBuffers;
-        };
-
     private:
-        openni::Device device;
-
-        openni::VideoStream depthStream;
-        openni::VideoStream rgbStream;
-
-        //Map for formats from OpenNI2
-        std::map<int, std::string> formatMap;
+        rs::context ctx;
+        rs::device * dev;
 
         int64_t lastRgbTime;
         int64_t lastDepthTime;
 
         ThreadMutexObject<int> latestRgbIndex;
         std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
-
-        RGBCallback * rgbCallback;
-        DepthCallback * depthCallback;
 
         bool initSuccessful;
         std::string errorText;
@@ -179,5 +82,4 @@ class OpenNI2Interface
             }
         }
 };
-
-#endif /* OPENNI2INTERFACE_H_ */
+#endif

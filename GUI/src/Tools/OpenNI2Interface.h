@@ -16,8 +16,8 @@
  *
  */
 
-#ifndef OPENNI2INTERFACE_H_
-#define OPENNI2INTERFACE_H_
+#ifndef INTERFACE_H_
+#define INTERFACE_H_
 
 #include <OpenNI.h>
 #include <PS1080.h>

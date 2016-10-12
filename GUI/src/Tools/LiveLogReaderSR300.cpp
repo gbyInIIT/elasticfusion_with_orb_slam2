@@ -25,27 +25,24 @@ LiveLogReaderSR300::LiveLogReaderSR300(std::string file, bool flipColors)
 {
     std::cout << "Creating live capture... "; std::cout.flush();
 
-	asus = new OpenNI2Interface(Resolution::getInstance().width(), Resolution::getInstance().height());
+	asus = new SR300Interface(Resolution::getInstance().width(), Resolution::getInstance().height());
 
 	decompressionBufferDepth = new Bytef[Resolution::getInstance().numPixels() * 2];
 
 	decompressionBufferImage = new Bytef[Resolution::getInstance().numPixels() * 3];
 
-    if(!asus->ok())
-    {
+    if(!asus->ok()) {
         std::cout << "failed!" << std::endl;
         std::cout << asus->error();
     }
-    else
-    {
+    else {
         std::cout << "success!" << std::endl;
 
         std::cout << "Waiting for first frame"; std::cout.flush();
 
         int lastDepth = asus->latestDepthIndex.getValue();
 
-        do
-        {
+        do {
             usleep(33333);
             std::cout << "."; std::cout.flush();
             lastDepth = asus->latestDepthIndex.getValue();
@@ -70,7 +67,7 @@ void LiveLogReaderSR300::getNext()
 
     assert(lastDepth != -1);
 
-    int bufferIndex = lastDepth % OpenNI2Interface::numBuffers;
+    int bufferIndex = lastDepth % SR300Interface::numBuffers;
 
     if(bufferIndex == lastGot)
     {

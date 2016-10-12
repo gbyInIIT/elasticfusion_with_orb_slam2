@@ -36,4 +36,5 @@ target_link_libraries(ElasticFusion
                       ${CUDA_LIBRARIES}
                       ${EFUSION_LIBRARY}
                       ${OPENNI2_LIBRARY}
+                      realsense
 )

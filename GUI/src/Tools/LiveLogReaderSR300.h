@@ -16,8 +16,8 @@
  *
  */
 
-#ifndef LIVELOGREADER_H_
-#define LIVELOGREADER_H_
+#ifndef LIVELOGREADERSR300_H_
+#define LIVELOGREADERSR300_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,11 +66,11 @@ class LiveLogReaderSR300 : public LogReader
 
         void setAuto(bool value);
 
-		OpenNI2Interface * asus;
+		SR300Interface * asus;
 
 	private:
 		int64_t lastFrameTime;
 		int lastGot;
 };
 
-#endif /* LIVELOGREADER_H_ */
+#endif /* LIVELOGREADERSR300_H_ */
