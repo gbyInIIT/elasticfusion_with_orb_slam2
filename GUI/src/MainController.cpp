@@ -42,7 +42,9 @@ MainController::MainController(int argc, char * argv[])
     }
     else
     {
-        Intrinsics::getInstance(528, 528, 320, 240);
+//        Intrinsics::getInstance(528, 528, 320, 240);
+//        Intrinsics::getInstance(476, 476, 316, 246);
+        Intrinsics::getInstance(616.887451, 616.887512, 313.041534, 240.50174);
     }
 
     Parse::get().arg(argc, argv, "-l", logFile);

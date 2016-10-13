@@ -17,6 +17,7 @@
  */
 
 #include "SR300Interface.h"
+#include <unistd.h>
 
 SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
  : width(inWidth),
@@ -42,6 +43,9 @@ SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
     try { dev->enable_stream(rs::stream::infrared2, inWidth, inHeight, rs::format::y8, fps); }
     catch(...) { printf("Device does not provide infrared2 stream.\n"); }
     initSuccessful = true;
+    printf("depth scale: %f\n", dev->get_depth_scale());
+    const rs::intrinsics depth_intrin = dev->get_stream_intrinsics(rs::stream::depth);
+    const rs::intrinsics color_intrin = dev->get_stream_intrinsics(rs::stream::color);
     latestDepthIndex.assign(-1);
     latestRgbIndex.assign(-1);
     for(int i = 0; i < numBuffers; i++) {
@@ -57,6 +61,8 @@ SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
         lastDepthTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
         int bufferIndex = (latestDepthIndex.getValue() + 1) % numBuffers;
         memcpy(frameBuffers[bufferIndex].first.first, frame.get_data(), frame.get_width() * frame.get_height() * 2);
+//        dev->wait_for_frames();
+//        memcpy(frameBuffers[bufferIndex].first.first, dev->get_frame_data(rs::stream::depth_aligned_to_color), frame.get_width() * frame.get_height() * 2);
         frameBuffers[bufferIndex].second = lastDepthTime;
         int lastImageVal = latestRgbIndex.getValue();
         if(lastImageVal == -1) {
@@ -66,11 +72,38 @@ SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
         memcpy(frameBuffers[bufferIndex].first.second, rgbBuffers[lastImageVal].first, frame.get_width() * frame.get_height() * 3);
         latestDepthIndex++;
     };
-    dev->set_frame_callback(rs::stream::depth, depth_callback);
+    auto depth_aligned_to_color_feeder = [this]() {
+        while(!dev->is_streaming()) {
+           usleep(1000);
+        }
+        while(true) {
+            dev->wait_for_frames();
+            lastDepthTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+            int bufferIndex = (latestDepthIndex.getValue() + 1) % numBuffers;
+//            memcpy(frameBuffers[bufferIndex].first.first, frame.get_data(), frame.get_width() * frame.get_height() * 2);
+//        dev->wait_for_frames();
+            memcpy(frameBuffers[bufferIndex].first.first, dev->get_frame_data(rs::stream::depth_aligned_to_color),
+                   dev->get_stream_width(rs::stream::depth_aligned_to_color) * dev->get_stream_height(rs::stream::depth_aligned_to_color) * 2);
+            frameBuffers[bufferIndex].second = lastDepthTime;
+            int lastImageVal = latestRgbIndex.getValue();
+            if(lastImageVal == -1) {
+                return;
+            }
+            lastImageVal %= numBuffers;
+            memcpy(frameBuffers[bufferIndex].first.second, rgbBuffers[lastImageVal].first,
+                   dev->get_stream_width(rs::stream::depth_aligned_to_color) * dev->get_stream_height(rs::stream::depth_aligned_to_color) * 3);
+            latestDepthIndex++;
+            usleep(33333);
+        }
+    };
+    depth_aligned_to_color_daemon_thread = std::move(std::thread(depth_aligned_to_color_feeder));
+//    dev->set_frame_callback(rs::stream::depth, depth_callback);
+//    dev->set_frame_callback(rs::stream::depth_aligned_to_color, depth_callback);
     auto color_callback = [this](rs::frame frame) {
         lastRgbTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
         int bufferIndex = (latestRgbIndex.getValue() + 1) % numBuffers;
         memcpy(rgbBuffers[bufferIndex].first, frame.get_data(), frame.get_width() * frame.get_height() * 3);
+//        memcpy(rgbBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::color_aligned_to_depth), frame.get_width() * frame.get_height() * 3);
         rgbBuffers[bufferIndex].second = lastRgbTime;
         latestRgbIndex++;
     };

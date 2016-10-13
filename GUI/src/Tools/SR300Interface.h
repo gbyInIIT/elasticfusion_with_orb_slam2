@@ -60,6 +60,7 @@ class SR300Interface
     private:
         rs::context ctx;
         rs::device * dev;
+        std::thread depth_aligned_to_color_daemon_thread;
 
         int64_t lastRgbTime;
         int64_t lastDepthTime;
