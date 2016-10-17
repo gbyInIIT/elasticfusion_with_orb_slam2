@@ -25,10 +25,14 @@ set(CMAKE_CXX_FLAGS "-O3 -msse2 -msse3 -Wall -std=c++11")
 
 add_definitions(-Dlinux=1)
 
-add_executable(ElasticFusion 
-               ${srcs}
+add_executable(ElasticFusion
+               Main.cpp MainController.cpp
                ${tools_srcs}
 )
+add_executable(ElasticFusionSR300
+        MainSR300.cpp MainControllerSR300.cpp
+        ${tools_srcs}
+        )
 
 target_link_libraries(ElasticFusion
                       ${ZLIB_LIBRARY}
@@ -38,3 +42,11 @@ target_link_libraries(ElasticFusion
                       ${OPENNI2_LIBRARY}
                       realsense
 )
+target_link_libraries(ElasticFusionSR300
+        ${ZLIB_LIBRARY}
+        ${Pangolin_LIBRARIES}
+        ${CUDA_LIBRARIES}
+        ${EFUSION_LIBRARY}
+        ${OPENNI2_LIBRARY}
+        realsense
+        )
