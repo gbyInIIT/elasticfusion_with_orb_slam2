@@ -76,22 +76,25 @@ SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
         while(!dev->is_streaming()) {
            usleep(1000);
         }
+        int nPixel = dev->get_stream_width(rs::stream::depth_aligned_to_color) * dev->get_stream_height(rs::stream::depth_aligned_to_color);
         while(true) {
             dev->wait_for_frames();
             lastDepthTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
             int bufferIndex = (latestDepthIndex.getValue() + 1) % numBuffers;
 //            memcpy(frameBuffers[bufferIndex].first.first, frame.get_data(), frame.get_width() * frame.get_height() * 2);
 //        dev->wait_for_frames();
-            memcpy(frameBuffers[bufferIndex].first.first, dev->get_frame_data(rs::stream::depth_aligned_to_color),
-                   dev->get_stream_width(rs::stream::depth_aligned_to_color) * dev->get_stream_height(rs::stream::depth_aligned_to_color) * 2);
+            memcpy(frameBuffers[bufferIndex].first.first, dev->get_frame_data(rs::stream::depth_aligned_to_color), nPixel * 2);
             frameBuffers[bufferIndex].second = lastDepthTime;
+            unsigned short * depth_data = (unsigned short *)(frameBuffers[bufferIndex].first.first);
+            for (int i = 0; i < nPixel; i++) {
+//                depth_data[i] >>= 3;
+            }
             int lastImageVal = latestRgbIndex.getValue();
             if(lastImageVal == -1) {
                 return;
             }
             lastImageVal %= numBuffers;
-            memcpy(frameBuffers[bufferIndex].first.second, rgbBuffers[lastImageVal].first,
-                   dev->get_stream_width(rs::stream::depth_aligned_to_color) * dev->get_stream_height(rs::stream::depth_aligned_to_color) * 3);
+            memcpy(frameBuffers[bufferIndex].first.second, rgbBuffers[lastImageVal].first, nPixel * 3);
             latestDepthIndex++;
             usleep(33333);
         }
