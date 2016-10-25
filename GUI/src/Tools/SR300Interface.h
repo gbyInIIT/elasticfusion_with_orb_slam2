@@ -29,58 +29,65 @@
 
 class SR300Interface
 {
-    public:
-        SR300Interface(int inWidth = 640, int inHeight = 480, int fps = 30);
-        virtual ~SR300Interface();
+public:
+    SR300Interface(int inWidth = 640, int inHeight = 480, int fps = 30);
+    virtual ~SR300Interface();
 
-        const int width, height, fps;
+    const int width, height, fps;
 
-        void printModes();
-        bool findMode(int x, int y, int fps);
-        void setAutoExposure(bool value);
-        void setAutoWhiteBalance(bool value);
-        bool getAutoExposure();
-        bool getAutoWhiteBalance();
+    void printModes();
+    bool findMode(int x, int y, int fps);
+    void setAutoExposure(bool value);
+    void setAutoWhiteBalance(bool value);
+    bool getAutoExposure();
+    bool getAutoWhiteBalance();
 
-        bool ok()
+    bool ok()
+    {
+        return initSuccessful;
+    }
+
+    std::string error()
+    {
+        errorText.erase(std::remove_if(errorText.begin(), errorText.end(), &SR300Interface::isTab), errorText.end());
+        return errorText;
+    }
+
+    static const int numBuffers = 10;
+    ThreadMutexObject<int> latestDepthIndex;
+    ThreadMutexObject<int> latestAllFrameIndex;
+    std::pair<std::pair<uint8_t *, uint8_t *>, int64_t> frameBuffers[numBuffers];
+//    std::pair<std::tuple<uint8_t *, uint8_t *, uint8_t *, uint8_t *>, int64_t> frameBuffersEx[numBuffers]; // depth/color/depth_aligned_to_color/color_aligned_to_depth
+    std::pair<uint8_t *, int64_t> depthBuffers[numBuffers];
+    std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
+    std::pair<uint8_t *, int64_t> depthAlignedToRgbBuffers[numBuffers];
+    std::pair<uint8_t *, int64_t> rgbAlginedToDepthBuffers[numBuffers];
+
+private:
+    rs::context ctx;
+    rs::device * dev;
+    std::thread depth_aligned_to_color_daemon_thread;
+    std::thread allFrameDaemonThread;
+
+    int64_t lastAllFrameTime;
+    int64_t lastRgbTime;
+    int64_t lastDepthTime;
+
+    ThreadMutexObject<int> latestRgbIndex;
+
+    bool initSuccessful;
+    std::string errorText;
+
+    //For removing tabs from OpenNI's error messages
+    static bool isTab(char c)
+    {
+        switch(c)
         {
-            return initSuccessful;
+            case '\t':
+                return true;
+            default:
+                return false;
         }
-
-        std::string error()
-        {
-            errorText.erase(std::remove_if(errorText.begin(), errorText.end(), &SR300Interface::isTab), errorText.end());
-            return errorText;
-        }
-
-        static const int numBuffers = 10;
-        ThreadMutexObject<int> latestDepthIndex;
-        std::pair<std::pair<uint8_t *, uint8_t *>, int64_t> frameBuffers[numBuffers];
-
-    private:
-        rs::context ctx;
-        rs::device * dev;
-        std::thread depth_aligned_to_color_daemon_thread;
-
-        int64_t lastRgbTime;
-        int64_t lastDepthTime;
-
-        ThreadMutexObject<int> latestRgbIndex;
-        std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
-
-        bool initSuccessful;
-        std::string errorText;
-
-        //For removing tabs from OpenNI's error messages
-        static bool isTab(char c)
-        {
-            switch(c)
-            {
-                case '\t':
-                    return true;
-                default:
-                    return false;
-            }
-        }
+    }
 };
 #endif

@@ -48,9 +48,16 @@ SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
     const rs::intrinsics color_intrin = dev->get_stream_intrinsics(rs::stream::color);
     latestDepthIndex.assign(-1);
     latestRgbIndex.assign(-1);
+    latestAllFrameIndex.assign(-1);
     for(int i = 0; i < numBuffers; i++) {
-        uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
-        rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newImage, 0);
+        uint8_t * newDepthImage = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
+        uint8_t * newRgbImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
+        uint8_t * newDepthAlignedToRgbImage = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
+        uint8_t * newRgbAlignedToDepthImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
+        depthBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthImage, 0);
+        rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbImage, 0);
+        depthAlignedToRgbBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthAlignedToRgbImage, 0);
+        rgbAlginedToDepthBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbAlignedToDepthImage, 0);
     }
     for(int i = 0; i < numBuffers; i++) {
         uint8_t * newDepth = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
@@ -61,8 +68,6 @@ SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
         lastDepthTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
         int bufferIndex = (latestDepthIndex.getValue() + 1) % numBuffers;
         memcpy(frameBuffers[bufferIndex].first.first, frame.get_data(), frame.get_width() * frame.get_height() * 2);
-//        dev->wait_for_frames();
-//        memcpy(frameBuffers[bufferIndex].first.first, dev->get_frame_data(rs::stream::depth_aligned_to_color), frame.get_width() * frame.get_height() * 2);
         frameBuffers[bufferIndex].second = lastDepthTime;
         int lastImageVal = latestRgbIndex.getValue();
         if(lastImageVal == -1) {
@@ -72,6 +77,7 @@ SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
         memcpy(frameBuffers[bufferIndex].first.second, rgbBuffers[lastImageVal].first, frame.get_width() * frame.get_height() * 3);
         latestDepthIndex++;
     };
+//    dev->set_frame_callback(rs::stream::depth, depth_callback);
     auto depth_aligned_to_color_feeder = [this]() {
         while(!dev->is_streaming()) {
            usleep(1000);
@@ -99,18 +105,61 @@ SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
             usleep(33333);
         }
     };
-    depth_aligned_to_color_daemon_thread = std::move(std::thread(depth_aligned_to_color_feeder));
-//    dev->set_frame_callback(rs::stream::depth, depth_callback);
-//    dev->set_frame_callback(rs::stream::depth_aligned_to_color, depth_callback);
+    auto color_aligned_to_depth_feeder = [this]() {
+        while(!dev->is_streaming()) {
+            usleep(1000);
+        }
+        int nPixel = dev->get_stream_width(rs::stream::color_aligned_to_depth) * dev->get_stream_height(rs::stream::color_aligned_to_depth);
+        while(true) {
+            dev->wait_for_frames();
+            lastDepthTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+            int bufferIndex = (latestDepthIndex.getValue() + 1) % numBuffers;
+            int lastImageVal = latestRgbIndex.getValue();
+            memcpy(frameBuffers[bufferIndex].first.first, dev->get_frame_data(rs::stream::color_aligned_to_depth), nPixel * 2);
+            frameBuffers[bufferIndex].second = lastDepthTime;
+            if(lastImageVal == -1) {
+                return;
+            }
+            lastImageVal %= numBuffers;
+            memcpy(frameBuffers[bufferIndex].first.second, rgbBuffers[lastImageVal].first, nPixel * 3);
+            latestDepthIndex++;
+            usleep(300000);
+        }
+    };
+    auto all_stream_feeder = [this]() {
+        while(!dev->is_streaming()) {
+            usleep(1000);
+        }
+        int nPixel = dev->get_stream_width(rs::stream::color_aligned_to_depth) * dev->get_stream_height(rs::stream::color_aligned_to_depth);
+        assert(dev->get_stream_width(rs::stream::depth_aligned_to_color)*dev->get_stream_height(rs::stream::depth_aligned_to_color) == nPixel);
+        assert(dev->get_stream_width(rs::stream::depth)*dev->get_stream_height(rs::stream::depth) == nPixel);
+        assert(dev->get_stream_width(rs::stream::color)*dev->get_stream_height(rs::stream::color) == nPixel);
+        while(true) {
+            dev->wait_for_frames();
+            lastAllFrameTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+            int bufferIndex = (latestAllFrameIndex.getValue() + 1) % numBuffers;
+            memcpy(depthBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::depth), nPixel * 2);
+            memcpy(rgbBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::color), nPixel * 3);
+            memcpy(depthAlignedToRgbBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::depth_aligned_to_color), nPixel * 2);
+            memcpy(rgbAlginedToDepthBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::color_aligned_to_depth), nPixel * 3);
+            depthBuffers[bufferIndex].second = lastAllFrameTime;
+            rgbBuffers[bufferIndex].second = lastAllFrameTime;
+            depthAlignedToRgbBuffers[bufferIndex].second = lastAllFrameTime;
+            rgbAlginedToDepthBuffers[bufferIndex].second = lastAllFrameTime;
+            latestAllFrameIndex++;
+            usleep(50000);
+        }
+    };
+    allFrameDaemonThread = std::move(std::thread(all_stream_feeder));
+//    depth_aligned_to_color_daemon_thread = std::move(std::thread(depth_aligned_to_color_feeder));
     auto color_callback = [this](rs::frame frame) {
         lastRgbTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
         int bufferIndex = (latestRgbIndex.getValue() + 1) % numBuffers;
         memcpy(rgbBuffers[bufferIndex].first, frame.get_data(), frame.get_width() * frame.get_height() * 3);
-//        memcpy(rgbBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::color_aligned_to_depth), frame.get_width() * frame.get_height() * 3);
         rgbBuffers[bufferIndex].second = lastRgbTime;
         latestRgbIndex++;
     };
-    dev->set_frame_callback(rs::stream::color, color_callback);
+//    dev->set_frame_callback(rs::stream::color, color_callback);
     dev->start();
 }
 

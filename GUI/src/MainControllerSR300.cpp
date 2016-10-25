@@ -67,17 +67,18 @@ MainControllerSR300::MainControllerSR300(int argc, char * argv[])
         groundTruthOdometry = new GroundTruthOdometry(poseFile);
     }
 
-    confidence = 15.0f;
+    confidence = 10.0f;
     depth = 24.0f;
     icp = 10.0f;
-    icpErrThresh = 5e-07;
-    covThresh = 1e-07;
-    photoThresh = 115;
-//    fernThresh = 0.3095f;
-    fernThresh = 0.2f;
+    icpErrThresh = 5e-05;
+    covThresh = 1e-05;
+//    photoThresh = 115;
+    photoThresh = 50;
+    fernThresh = 0.3095f;
+//    fernThresh = 0.2f;
 
     timeDelta = 200;
-    icpCountThresh = 350000;
+    icpCountThresh = 35000;
     start = 1;
     so3 = !(Parse::get().arg(argc, argv, "-nso", empty) > -1);
     end = std::numeric_limits<unsigned short>::max(); //Funny bound, since we predict times in this format really!

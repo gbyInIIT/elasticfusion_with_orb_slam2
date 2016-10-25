@@ -45,7 +45,8 @@ LiveLogReaderSR300::LiveLogReaderSR300(std::string file, bool flipColors)
         do {
             usleep(33333);
             std::cout << "."; std::cout.flush();
-            lastDepth = asus->latestDepthIndex.getValue();
+            lastDepth = asus->latestAllFrameIndex.getValue();
+//            lastDepth = asus->latestDepthIndex.getValue();
         } while(lastDepth == -1);
 
         std::cout << " got it!" << std::endl;
@@ -63,7 +64,8 @@ LiveLogReaderSR300::~LiveLogReaderSR300()
 
 void LiveLogReaderSR300::getNext()
 {
-    int lastDepth = asus->latestDepthIndex.getValue();
+//    int lastDepth = asus->latestDepthIndex.getValue();
+    int lastDepth = asus->latestAllFrameIndex.getValue();
 
     assert(lastDepth != -1);
 
@@ -74,15 +76,21 @@ void LiveLogReaderSR300::getNext()
         return;
     }
 
-    if(lastFrameTime == asus->frameBuffers[bufferIndex].second)
+    if(lastFrameTime == asus->depthBuffers[bufferIndex].second)
+//        if(lastFrameTime == asus->frameBuffers[bufferIndex].second)
     {
         return;
     }
 
-    memcpy(&decompressionBufferDepth[0], asus->frameBuffers[bufferIndex].first.first, Resolution::getInstance().numPixels() * 2);
-    memcpy(&decompressionBufferImage[0], asus->frameBuffers[bufferIndex].first.second, Resolution::getInstance().numPixels() * 3);
+    memcpy(&decompressionBufferDepth[0], asus->depthAlignedToRgbBuffers[bufferIndex].first, Resolution::getInstance().numPixels() * 2);
+//    memcpy(&decompressionBufferDepth[0], asus->depthBuffers[bufferIndex].first, Resolution::getInstance().numPixels() * 2);
+//    memcpy(&decompressionBufferDepth[0], asus->frameBuffers[bufferIndex].first.first, Resolution::getInstance().numPixels() * 2);
+    memcpy(&decompressionBufferImage[0], asus->rgbBuffers[bufferIndex].first, Resolution::getInstance().numPixels() * 3);
+//    memcpy(&decompressionBufferImage[0], asus->rgbAlginedToDepthBuffers[bufferIndex].first, Resolution::getInstance().numPixels() * 3);
+//    memcpy(&decompressionBufferImage[0], asus->frameBuffers[bufferIndex].first.second, Resolution::getInstance().numPixels() * 3);
 
-    lastFrameTime = asus->frameBuffers[bufferIndex].second;
+    lastFrameTime = asus->depthBuffers[bufferIndex].second;
+//    lastFrameTime = asus->frameBuffers[bufferIndex].second;
 
     timestamp = lastFrameTime;
 
