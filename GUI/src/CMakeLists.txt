@@ -4,6 +4,17 @@ project(ElasticFusion)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 
+find_package(catkin REQUIRED COMPONENTS
+        cv_bridge
+        genmsg
+        image_transport
+        sensor_msgs
+        )
+message(STATUS "${catkin_LIBRARIES}")
+include_directories(
+        ${catkin_INCLUDE_DIRS}
+)
+
 find_package(ZLIB REQUIRED)
 find_package(Pangolin 0.1 REQUIRED)
 find_package(CUDA REQUIRED)
@@ -34,6 +45,11 @@ add_executable(ElasticFusionSR300
         ${tools_srcs}
         )
 
+add_executable(ElasticFusionRos
+        MainRos.cpp MainControllerRos.cpp
+        ${tools_srcs}
+        )
+
 target_link_libraries(ElasticFusion
                       ${ZLIB_LIBRARY}
                       ${Pangolin_LIBRARIES}
@@ -41,6 +57,7 @@ target_link_libraries(ElasticFusion
                       ${EFUSION_LIBRARY}
                       ${OPENNI2_LIBRARY}
                       realsense
+        ${catkin_LIBRARIES}
 )
 target_link_libraries(ElasticFusionSR300
         ${ZLIB_LIBRARY}
@@ -49,4 +66,17 @@ target_link_libraries(ElasticFusionSR300
         ${EFUSION_LIBRARY}
         ${OPENNI2_LIBRARY}
         realsense
+        ${catkin_LIBRARIES}
         )
+
+target_link_libraries(ElasticFusionRos
+        ${ZLIB_LIBRARY}
+        ${Pangolin_LIBRARIES}
+        ${CUDA_LIBRARIES}
+        ${EFUSION_LIBRARY}
+        ${OPENNI2_LIBRARY}
+        realsense
+        ${catkin_LIBRARIES}
+        )
+
+set(CMAKE_VERBOSE_MAKEFILE on)

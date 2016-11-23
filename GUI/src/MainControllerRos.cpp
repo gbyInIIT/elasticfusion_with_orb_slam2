@@ -16,9 +16,9 @@
  *
  */
  
-#include "MainControllerSR300.h"
+#include "MainControllerRos.h"
 
-MainControllerSR300::MainControllerSR300(int argc, char * argv[])
+MainControllerRos::MainControllerRos(int argc, char * argv[])
  : good(true),
    eFusion(0),
    gui(0),
@@ -33,6 +33,19 @@ MainControllerSR300::MainControllerSR300(int argc, char * argv[])
 
     std::string calibrationFile;
     Parse::get().arg(argc, argv, "-cal", calibrationFile);
+    float fx=615.896851, fy=615.896912, cx=313.278687, cy=239.752930;
+    if(0 > Parse::get().arg(argc, argv, "-fx", fx)) {
+        fprintf(stderr, "no proper fx input with -fx\n");
+    }
+    if (0 > Parse::get().arg(argc, argv, "-fy", fy)) {
+        fprintf(stderr, "no proper fy input with -fy\n");
+    }
+    if (0 > Parse::get().arg(argc, argv, "-cx", cx) ) {
+        fprintf(stderr, "no proper cx input with -cx\n");
+    }
+    if (0 > Parse::get().arg(argc, argv, "-cy", cy)) {
+        fprintf(stderr, "no proper cy input with -cy\n");
+    }
 
     Resolution::getInstance(640, 480);
 
@@ -44,7 +57,8 @@ MainControllerSR300::MainControllerSR300(int argc, char * argv[])
     {
 //        Intrinsics::getInstance(528, 528, 320, 240);
 //        Intrinsics::getInstance(476, 476, 316, 246);
-        Intrinsics::getInstance(615.896851, 615.896912, 313.278687, 239.752930);
+//        Intrinsics::getInstance(615.896851, 615.896912, 313.278687, 239.752930);
+        Intrinsics::getInstance(fx, fy, cx, cy);
     }
 
     Parse::get().arg(argc, argv, "-l", logFile);
@@ -55,11 +69,9 @@ MainControllerSR300::MainControllerSR300(int argc, char * argv[])
     }
     else
     {
-//        logReader = new LiveLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
-        logReader = new LiveLogReaderSR300(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
+        logReader = new LiveLogReaderRos(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
 
-//        good = ((LiveLogReader *)logReader)->asus->ok();
-        good = ((LiveLogReaderSR300*)logReader)->asus->ok();
+        good = ((LiveLogReaderRos*)logReader)->asus->ok();
     }
 
     if(Parse::get().arg(argc, argv, "-p", poseFile) > 0)
@@ -123,7 +135,7 @@ MainControllerSR300::MainControllerSR300(int argc, char * argv[])
                               Resolution::getInstance().height() / 2);
 }
 
-MainControllerSR300::~MainControllerSR300()
+MainControllerRos::~MainControllerRos()
 {
     if(eFusion)
     {
@@ -151,7 +163,7 @@ MainControllerSR300::~MainControllerSR300()
     }
 }
 
-void MainControllerSR300::loadCalibration(const std::string & filename)
+void MainControllerRos::loadCalibration(const std::string & filename)
 {
     std::ifstream file(filename);
     std::string line;
@@ -169,7 +181,7 @@ void MainControllerSR300::loadCalibration(const std::string & filename)
     Intrinsics::getInstance(fx, fy, cx, cy);
 }
 
-void MainControllerSR300::launch()
+void MainControllerRos::launch()
 {
     while(good)
     {
@@ -213,7 +225,7 @@ void MainControllerSR300::launch()
     }
 }
 
-void MainControllerSR300::run()
+void MainControllerRos::run()
 {
     while(!pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
     {

@@ -147,7 +147,7 @@ SR300Interface::SR300Interface(int inWidth, int inHeight, int fps)
             depthAlignedToRgbBuffers[bufferIndex].second = lastAllFrameTime;
             rgbAlginedToDepthBuffers[bufferIndex].second = lastAllFrameTime;
             latestAllFrameIndex++;
-            usleep(50000);
+            usleep(10000);
         }
     };
     allFrameDaemonThread = std::move(std::thread(all_stream_feeder));
