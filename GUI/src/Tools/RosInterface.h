@@ -26,14 +26,14 @@
 
 #include "ThreadMutexObject.h"
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
 
 class RosInterface
 {
 public:
-    RosInterface(int inWidth = 640, int inHeight = 480, int fps = 30);
+    RosInterface();
     virtual ~RosInterface();
 
-    const int width, height, fps;
 
     bool ok() {
         return initSuccessful;
@@ -43,7 +43,11 @@ public:
     ThreadMutexObject<int> latestAllFrameIndex;
     std::pair<uint8_t *, int64_t> depthBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
+    ThreadMutexObject<bool> isCameraInitialized;
+    sensor_msgs::CameraInfo cameraInfo;
     void depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImage, const sensor_msgs::ImageConstPtr& depthImage);
+    void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cameraInfoConstPtr);
+    int width, height, fps, nPixel;
 
 private:
     std::thread rosThread;

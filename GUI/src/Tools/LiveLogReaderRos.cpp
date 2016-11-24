@@ -18,14 +18,15 @@
 
 #include "LiveLogReaderRos.h"
 
-LiveLogReaderRos::LiveLogReaderRos(std::string file, bool flipColors)
+LiveLogReaderRos::LiveLogReaderRos(std::string file, bool flipColors, RosInterface * asusIn)
  : LogReader(file, flipColors),
    lastFrameTime(-1),
    lastGot(-1)
 {
     std::cout << "Creating live capture... "; std::cout.flush();
 
-	asus = new RosInterface(Resolution::getInstance().width(), Resolution::getInstance().height());
+	asus = asusIn;
+//    asus = new RosInterface();
 
 	decompressionBufferDepth = new Bytef[Resolution::getInstance().numPixels() * 2];
 

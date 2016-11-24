@@ -32,7 +32,7 @@
 class LiveLogReaderRos: public LogReader
 {
 	public:
-		LiveLogReaderRos(std::string file, bool flipColors);
+		LiveLogReaderRos(std::string file, bool flipColors, RosInterface * asusIn);
 
 		virtual ~LiveLogReaderRos();
 

@@ -27,20 +27,15 @@
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 
-RosInterface::RosInterface(int inWidth, int inHeight, int fps)
- : width(inWidth),
-   height(inHeight),
-   fps(fps),
+RosInterface::RosInterface()
+ : width(-1),
+   height(-1),
+   fps(30),
    initSuccessful(true)
 {
     latestAllFrameIndex.assign(-1);
-    for(int i = 0; i < numBuffers; i++) {
-        uint8_t * newDepthImage = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
-        uint8_t * newRgbImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
-        depthBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthImage, 0);
-        rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbImage, 0);
-    }
-    ThreadMutexObject<bool> isFinished(false);
+    isCameraInitialized.assign(false);
+//    ThreadMutexObject<bool> isFinished(false);
     auto rosAction = [this]() {
         int argc = 0;
         ros::init(argc, NULL, "depth_rgb_elasticfusion_sub");
@@ -51,14 +46,37 @@ RosInterface::RosInterface(int inWidth, int inHeight, int fps)
         typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
         message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub);
         sync.registerCallback(boost::bind(&RosInterface::depthRgbMsgCallback, this, _1,_2));
+        ros::Subscriber sub = nh.subscribe("realsense/camera_info", 10, &RosInterface::cameraInfoCallback, this);
         ros::spin();
         ros::shutdown();
     };
     rosThread = std::move(std::thread(rosAction));
+    while (!isCameraInitialized.getValue()) {
+        usleep(10000);
+    }
+    for(int i = 0; i < numBuffers; i++) {
+        uint8_t * newDepthImage = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
+        uint8_t * newRgbImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
+        depthBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthImage, 0);
+        rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbImage, 0);
+    }
 }
 
+void RosInterface::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cameraInfoConstPtr) {
+    if (!isCameraInitialized.getValue()) {
+        cameraInfo = *cameraInfoConstPtr;
+        printf("%s\n", cameraInfo.distortion_model.c_str());
+        width = cameraInfo.width;
+        height = cameraInfo.height;
+        nPixel = width * height;
+        isCameraInitialized.assign(true);
+    }
+}
 void RosInterface::depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImage, const sensor_msgs::ImageConstPtr& depthImage)
 {
+    if (!isCameraInitialized.getValue()) {
+        return;
+    }
     cv_bridge::CvImagePtr cvDepthImagePtr;
     try {
         cvDepthImagePtr = cv_bridge::toCvCopy(depthImage, sensor_msgs::image_encodings::MONO16);
