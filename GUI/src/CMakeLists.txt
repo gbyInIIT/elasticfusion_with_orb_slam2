@@ -37,17 +37,16 @@ set(CMAKE_CXX_FLAGS "-O3 -msse2 -msse3 -Wall -std=c++11")
 add_definitions(-Dlinux=1)
 
 add_executable(ElasticFusion
-               Main.cpp MainController.cpp
-               ${tools_srcs}
+               Main.cpp MainController.cpp Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReader.cpp Tools/OpenNI2Interface.cpp
 )
 add_executable(ElasticFusionSR300
         MainSR300.cpp MainControllerSR300.cpp
-        ${tools_srcs}
+        Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReaderSR300.cpp Tools/SR300Interface.cpp
         )
 
 add_executable(ElasticFusionRos
         MainRos.cpp MainControllerRos.cpp
-        ${tools_srcs}
+        Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReaderRos.cpp Tools/RosInterface.cpp
         )
 
 target_link_libraries(ElasticFusion
@@ -56,17 +55,14 @@ target_link_libraries(ElasticFusion
                       ${CUDA_LIBRARIES}
                       ${EFUSION_LIBRARY}
                       ${OPENNI2_LIBRARY}
-                      realsense
-        ${catkin_LIBRARIES}
 )
+
 target_link_libraries(ElasticFusionSR300
         ${ZLIB_LIBRARY}
         ${Pangolin_LIBRARIES}
         ${CUDA_LIBRARIES}
         ${EFUSION_LIBRARY}
-        ${OPENNI2_LIBRARY}
         realsense
-        ${catkin_LIBRARIES}
         )
 
 target_link_libraries(ElasticFusionRos
@@ -74,8 +70,6 @@ target_link_libraries(ElasticFusionRos
         ${Pangolin_LIBRARIES}
         ${CUDA_LIBRARIES}
         ${EFUSION_LIBRARY}
-        ${OPENNI2_LIBRARY}
-        realsense
         ${catkin_LIBRARIES}
         )
 
