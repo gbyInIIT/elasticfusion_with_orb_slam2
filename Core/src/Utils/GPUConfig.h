@@ -65,6 +65,11 @@ class GPUConfig
 
             std::string dev(prop.name);
 
+            icpStepMap["GeForce GTX 780"] = std::pair<int, int>(224, 48);
+            rgbStepMap["GeForce GTX 780"] = std::pair<int, int>(224, 48);
+            rgbResMap["GeForce GTX 780"] = std::pair<int, int>(512, 48);
+            so3StepMap["GeForce GTX 780"] = std::pair<int, int>(96, 96);
+
             icpStepMap["GeForce GTX 980M"] = std::pair<int, int>(128, 96);
             rgbStepMap["GeForce GTX 980M"] = std::pair<int, int>(160, 48);
             rgbResMap["GeForce GTX 980M"] = std::pair<int, int>(256, 96);
