@@ -35,7 +35,7 @@ RosInterface::RosInterface()
 {
     latestAllFrameIndex.assign(-1);
     isCameraInitialized.assign(false);
-//    ThreadMutexObject<bool> isFinished(false);
+    isSystemRunning.assign(true);
     auto rosAction = [this]() {
         int argc = 0;
         ros::init(argc, NULL, "depth_rgb_elasticfusion_sub");
@@ -44,21 +44,18 @@ RosInterface::RosInterface()
         message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/camera/rgb/image_raw", 1);
         message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "/camera/depth_registered/image_raw", 1);
         typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
-        message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub);
+        message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub, depth_sub);
         sync.registerCallback(boost::bind(&RosInterface::depthRgbMsgCallback, this, _1,_2));
         ros::Subscriber sub = nh.subscribe("realsense/camera_info", 10, &RosInterface::cameraInfoCallback, this);
-        ros::spin();
+        while(ros::ok() && isSystemRunning.getValue()) {
+            ros::spinOnce();
+            usleep(100);
+        }
         ros::shutdown();
     };
     rosThread = std::move(std::thread(rosAction));
     while (!isCameraInitialized.getValue()) {
         usleep(10000);
-    }
-    for(int i = 0; i < numBuffers; i++) {
-        uint8_t * newDepthImage = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
-        uint8_t * newRgbImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
-        depthBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthImage, 0);
-        rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbImage, 0);
     }
 }
 
@@ -68,7 +65,12 @@ void RosInterface::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cam
         printf("%s\n", cameraInfo.distortion_model.c_str());
         width = cameraInfo.width;
         height = cameraInfo.height;
-        nPixel = width * height;
+        for(int i = 0; i < numBuffers; i++) {
+            uint8_t * newDepthImage = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
+            uint8_t * newRgbImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
+            depthBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthImage, 0);
+            rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbImage, 0);
+        }
         isCameraInitialized.assign(true);
     }
 }
@@ -121,11 +123,12 @@ RosInterface::~RosInterface()
 {
     if(initSuccessful) {
         printf("RosInterface dead.");
+        isSystemRunning.assign(false);
+        rosThread.join();
         for (int i = 0; i < numBuffers; i++) {
             free(depthBuffers[i].first);
             free(rgbBuffers[i].first);
         }
-        rosThread.join();
     }
 }
 

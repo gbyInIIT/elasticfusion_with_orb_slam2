@@ -44,10 +44,11 @@ public:
     std::pair<uint8_t *, int64_t> depthBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
     ThreadMutexObject<bool> isCameraInitialized;
+    ThreadMutexObject<bool> isSystemRunning;
     sensor_msgs::CameraInfo cameraInfo;
     void depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImage, const sensor_msgs::ImageConstPtr& depthImage);
     void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cameraInfoConstPtr);
-    int width, height, fps, nPixel;
+    int width, height, fps;
 
 private:
     std::thread rosThread;

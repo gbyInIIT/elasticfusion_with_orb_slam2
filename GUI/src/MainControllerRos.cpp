@@ -31,48 +31,18 @@ MainControllerRos::MainControllerRos(int argc, char * argv[])
     std::string empty;
     iclnuim = Parse::get().arg(argc, argv, "-icl", empty) > -1;
 
-    std::string calibrationFile;
-    Parse::get().arg(argc, argv, "-cal", calibrationFile);
-    float fx=615.896851, fy=615.896912, cx=313.278687, cy=239.752930;
-    if(0 > Parse::get().arg(argc, argv, "-fx", fx)) {
-        fprintf(stderr, "no proper fx input with -fx\n");
-    }
-    if (0 > Parse::get().arg(argc, argv, "-fy", fy)) {
-        fprintf(stderr, "no proper fy input with -fy\n");
-    }
-    if (0 > Parse::get().arg(argc, argv, "-cx", cx) ) {
-        fprintf(stderr, "no proper cx input with -cx\n");
-    }
-    if (0 > Parse::get().arg(argc, argv, "-cy", cy)) {
-        fprintf(stderr, "no proper cy input with -cy\n");
-    }
+//    std::string calibrationFile;
+//    Parse::get().arg(argc, argv, "-cal", calibrationFile);
+    RosInterface * asus = new RosInterface();
+    Resolution::getInstance(asus->cameraInfo.width, asus->cameraInfo.height);
+    Intrinsics::getInstance(asus->cameraInfo.K[0],
+                            asus->cameraInfo.K[4],
+                            asus->cameraInfo.K[2],
+                            asus->cameraInfo.K[5]);
+    logReader = new LiveLogReaderRos(logFile, false, asus);
+    LiveLogReaderRos * rosLogReader = (LiveLogReaderRos*)logReader;
+    good = rosLogReader->asus->ok();
 
-    Resolution::getInstance(640, 480);
-
-    if(calibrationFile.length())
-    {
-        loadCalibration(calibrationFile);
-    }
-    else
-    {
-//        Intrinsics::getInstance(528, 528, 320, 240);
-//        Intrinsics::getInstance(476, 476, 316, 246);
-//        Intrinsics::getInstance(615.896851, 615.896912, 313.278687, 239.752930);
-        Intrinsics::getInstance(fx, fy, cx, cy);
-    }
-
-    Parse::get().arg(argc, argv, "-l", logFile);
-
-    if(logFile.length())
-    {
-        logReader = new RawLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
-    }
-    else
-    {
-        logReader = new LiveLogReaderRos(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
-
-        good = ((LiveLogReaderRos*)logReader)->asus->ok();
-    }
 
     if(Parse::get().arg(argc, argv, "-p", poseFile) > 0)
     {
@@ -486,7 +456,7 @@ void MainControllerRos::run()
         }
         glColor3f(1, 1, 1);
 
-        eFusion->normaliseDepth(0.3f, gui->depthCutoff->Get());
+        eFusion->normaliseDepth(0.1f, gui->depthCutoff->Get());
 
         for(std::map<std::string, GPUTexture*>::const_iterator it = eFusion->getTextures().begin(); it != eFusion->getTextures().end(); ++it)
         {

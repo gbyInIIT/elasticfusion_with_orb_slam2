@@ -26,7 +26,6 @@ LiveLogReaderRos::LiveLogReaderRos(std::string file, bool flipColors, RosInterfa
     std::cout << "Creating live capture... "; std::cout.flush();
 
 	asus = asusIn;
-//    asus = new RosInterface();
 
 	decompressionBufferDepth = new Bytef[Resolution::getInstance().numPixels() * 2];
 
@@ -46,7 +45,6 @@ LiveLogReaderRos::LiveLogReaderRos(std::string file, bool flipColors, RosInterfa
             usleep(33333);
             std::cout << "."; std::cout.flush();
             lastDepth = asus->latestAllFrameIndex.getValue();
-//            lastDepth = asus->latestDepthIndex.getValue();
         } while(lastDepth == -1);
 
         std::cout << " got it!" << std::endl;
