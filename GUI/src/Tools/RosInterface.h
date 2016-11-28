@@ -27,6 +27,7 @@
 #include "ThreadMutexObject.h"
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/PointCloud2.h>
 
 class RosInterface
 {
@@ -49,6 +50,10 @@ public:
     void depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImage, const sensor_msgs::ImageConstPtr& depthImage);
     void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cameraInfoConstPtr);
     int width, height, fps;
+
+    static const int nPointCloudMsgBuffer = 10;
+    sensor_msgs::PointCloud2 pointCloudMsgBuffer[nPointCloudMsgBuffer];
+    ThreadMutexObject<int> latestPointCloudIndex;
 
 private:
     std::thread rosThread;

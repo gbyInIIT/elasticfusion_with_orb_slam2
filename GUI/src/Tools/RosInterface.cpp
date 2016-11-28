@@ -26,6 +26,8 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <tf/transform_broadcaster.h>
+#include <turtlesim/Pose.h>
 
 RosInterface::RosInterface()
  : width(-1),
@@ -36,6 +38,34 @@ RosInterface::RosInterface()
     latestAllFrameIndex.assign(-1);
     isCameraInitialized.assign(false);
     isSystemRunning.assign(true);
+    latestPointCloudIndex.assign(-1);
+    for (int i = 0; i < nPointCloudMsgBuffer; i++) {
+        sensor_msgs::PointCloud2 & pointCloudMsg = pointCloudMsgBuffer[i];
+        sensor_msgs::PointField x;
+        x.name = "x";
+        x.offset = 0;
+        x.datatype = sensor_msgs::PointField::FLOAT32;
+        x.count = 1;
+        sensor_msgs::PointField y;
+        y.name = "y";
+        y.offset = 4;
+        y.datatype = sensor_msgs::PointField::FLOAT32;
+        y.count = 1;
+        sensor_msgs::PointField z;
+        z.name = "z";
+        z.offset = 8;
+        z.datatype = sensor_msgs::PointField::FLOAT32;
+        z.count = 1;
+        sensor_msgs::PointField rgb;
+        rgb.name = "rgb";
+        rgb.offset = 12;
+        rgb.datatype = sensor_msgs::PointField::UINT32;
+        rgb.count = 1;
+        pointCloudMsg.fields = {x, y, z, rgb};
+        pointCloudMsg.is_bigendian = false;// default is false
+        pointCloudMsg.point_step = 16;// 4 + 4 + 4 + 4
+        pointCloudMsg.is_dense = false;// default false maybe it is safer even if there is no invalid point in the data
+    }
     auto rosAction = [this]() {
         int argc = 0;
         ros::init(argc, NULL, "depth_rgb_elasticfusion_sub");
@@ -47,7 +77,22 @@ RosInterface::RosInterface()
         message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub, depth_sub);
         sync.registerCallback(boost::bind(&RosInterface::depthRgbMsgCallback, this, _1,_2));
         ros::Subscriber sub = nh.subscribe("realsense/camera_info", 10, &RosInterface::cameraInfoCallback, this);
+        ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud2>("elasticfusion/point_cloud", 10);
+        int previousPointCloudIndex = -1;
+        tf::TransformBroadcaster br;
+        tf::Transform transform;
+        transform.setOrigin( tf::Vector3(0, 0, 0.0) );
+        tf::Quaternion q;
+        q.setRPY(0, 0, 0);
+        transform.setRotation(q);
         while(ros::ok() && isSystemRunning.getValue()) {
+            const int currentPointCloudIndex = latestPointCloudIndex.getValue();
+            if (currentPointCloudIndex != previousPointCloudIndex) {
+                previousPointCloudIndex = currentPointCloudIndex;
+                int bufferIndex = currentPointCloudIndex % nPointCloudMsgBuffer;
+                pub.publish(pointCloudMsgBuffer[bufferIndex]);
+                br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "elasticfusion_point_cloud"));
+            }
             ros::spinOnce();
             usleep(100);
         }

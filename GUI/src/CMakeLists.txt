@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
         genmsg
         image_transport
         sensor_msgs
+        tf
         )
 message(STATUS "${catkin_LIBRARIES}")
 include_directories(

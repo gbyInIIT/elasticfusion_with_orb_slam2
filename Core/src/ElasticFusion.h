@@ -246,7 +246,7 @@ class ElasticFusion
          */
         void savePly();
 
-        void publishPointCloud();
+        std::pair<Eigen::Vector4f * /*see void savePly()*/, unsigned int/*number of points in the cloud*/> getPointCloudData();
         /**
          * Renders a normalised view of the input raw depth for displaying as an OpenGL texture
          * (this is stored under textures[GPUTexture::DEPTH_NORM]

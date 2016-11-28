@@ -198,15 +198,18 @@ void MainControllerRos::launch()
 
 void MainControllerRos::run()
 {
+    ThreadMutexObject<bool> isExit(false);
     ThreadMutexObject<bool> isPublishPointCloud(false);
-    auto timeSaveAction = [&isPublishPointCloud]() {
-        while (!pangolin::ShouldQuit()) {
+    auto pointCloudClockAction = [&isPublishPointCloud, &isExit]() {
+        int i = 0;
+        while (!isExit.getValue()) {
             usleep(1000000);
             isPublishPointCloud.assign(true);
+//            printf("tick %d\n", i++);
+//            fflush(stdout);
         }
     };
-    std::thread timePublishThread(timeSaveAction);
-
+    std::thread pointCloudClockThread(pointCloudClockAction);
 
     while(!pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
     {
@@ -548,11 +551,58 @@ void MainControllerRos::run()
         {
             eFusion->savePly();
         }
+
         if (isPublishPointCloud.getValue()) {
+            std::pair<Eigen::Vector4f *, unsigned int> pointCloudDataAndCount = eFusion->getPointCloudData();
+            Eigen::Vector4f * pointCloudData = pointCloudDataAndCount.first;
+            const unsigned int nPoint = pointCloudDataAndCount.second;
+//            printf("nPoint returned from GPU: %d\n", nPoint);
+            auto updatePointCloudMsgBufferAction = [pointCloudData, nPoint, this]() {
+                LiveLogReaderRos * liveLogReaderRos = (LiveLogReaderRos*)logReader;
+                RosInterface * rosInterface = liveLogReaderRos->asus;
+                const int seq = rosInterface->latestPointCloudIndex.getValue() + 1;
+                const int bufferIndex = seq % rosInterface->nPointCloudMsgBuffer;
+                sensor_msgs::PointCloud2 & pointCloudMsg = rosInterface->pointCloudMsgBuffer[bufferIndex];
+                std_msgs::Header & header = pointCloudMsg.header;
+//                printf("point cloud seq: %d\n", seq);
+//                fflush(stdout);
+                header.seq = seq;
+                header.frame_id = "elasticfusion_point_cloud";
+                header.stamp = ros::Time::now();
+                unsigned int nValidPoint = 0;
+                for(unsigned int i = 0; i < nPoint; i++) {
+                    Eigen::Vector4f pos = pointCloudData[(i * 3) + 0];
+                    if(pos[3] > confidence) {
+                        nValidPoint++;
+                    }
+                }
+                pointCloudMsg.height = 1;
+                pointCloudMsg.width = nValidPoint;
+                pointCloudMsg.row_step = pointCloudMsg.point_step * pointCloudMsg.width;
+                pointCloudMsg.data.resize(pointCloudMsg.row_step);
+                float * floatDataPtr = reinterpret_cast<float *>(pointCloudMsg.data.data());
+                unsigned int iPoint = 0;
+                for(unsigned int i = 0; i < nPoint; i++) {
+                    Eigen::Vector4f pos = pointCloudData[(i * 3) + 0];
+                    Eigen::Vector4f col = pointCloudData[(i * 3) + 1];
+                    if(pos[3] > confidence) {
+                        nValidPoint++;
+                        floatDataPtr[iPoint * 4 + 0] = pos[0];
+                        floatDataPtr[iPoint * 4 + 1] = pos[1];
+                        floatDataPtr[iPoint * 4 + 2] = pos[2];
+                        *(int*)(&floatDataPtr[iPoint * 4 + 3]) = int(col[0]);
+                        iPoint++;
+                    }
+                }
+                rosInterface->latestPointCloudIndex++;
+                delete [] pointCloudData;
+            };
+            std::thread updatePointCloudMsgBufferThread(updatePointCloudMsgBufferAction);
+            updatePointCloudMsgBufferThread.detach();
             isPublishPointCloud.assign(false);
-            eFusion->publishPointCloud();
         }
         TOCK("GUI");
     }
-    timePublishThread.join();
+    isExit.assign(true);
+    pointCloudClockThread.join();
 }
