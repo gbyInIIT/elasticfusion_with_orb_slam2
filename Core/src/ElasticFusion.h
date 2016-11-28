@@ -246,6 +246,7 @@ class ElasticFusion
          */
         void savePly();
 
+        void publishPointCloud();
         /**
          * Renders a normalised view of the input raw depth for displaying as an OpenGL texture
          * (this is stored under textures[GPUTexture::DEPTH_NORM]

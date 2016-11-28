@@ -17,6 +17,7 @@
  */
  
 #include "MainControllerRos.h"
+#include "Tools/ThreadMutexObject.h"
 
 MainControllerRos::MainControllerRos(int argc, char * argv[])
  : good(true),
@@ -50,7 +51,7 @@ MainControllerRos::MainControllerRos(int argc, char * argv[])
     }
 
     confidence = 10.0f;
-    depth = 24.0f;
+    depth = 1.5*8.f;
     icp = 10.0f;
     icpErrThresh = 5e-05;
     covThresh = 1e-05;
@@ -197,6 +198,16 @@ void MainControllerRos::launch()
 
 void MainControllerRos::run()
 {
+    ThreadMutexObject<bool> isPublishPointCloud(false);
+    auto timeSaveAction = [&isPublishPointCloud]() {
+        while (!pangolin::ShouldQuit()) {
+            usleep(1000000);
+            isPublishPointCloud.assign(true);
+        }
+    };
+    std::thread timePublishThread(timeSaveAction);
+
+
     while(!pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
     {
         if(!gui->pause->Get() || pangolin::Pushed(*gui->step))
@@ -537,7 +548,11 @@ void MainControllerRos::run()
         {
             eFusion->savePly();
         }
-
+        if (isPublishPointCloud.getValue()) {
+            isPublishPointCloud.assign(false);
+            eFusion->publishPointCloud();
+        }
         TOCK("GUI");
     }
+    timePublishThread.join();
 }
