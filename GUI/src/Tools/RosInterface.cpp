@@ -76,7 +76,7 @@ RosInterface::RosInterface()
         typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
         message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub, depth_sub);
         sync.registerCallback(boost::bind(&RosInterface::depthRgbMsgCallback, this, _1,_2));
-        ros::Subscriber sub = nh.subscribe("realsense/camera_info", 10, &RosInterface::cameraInfoCallback, this);
+        ros::Subscriber sub = nh.subscribe("camera/camera_info", 10, &RosInterface::cameraInfoCallback, this);
         ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud2>("elasticfusion/point_cloud", 10);
         int previousPointCloudIndex = -1;
         tf::TransformBroadcaster br;
