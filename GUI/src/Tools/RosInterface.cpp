@@ -66,6 +66,10 @@ RosInterface::RosInterface()
         pointCloudMsg.point_step = 16;// 4 + 4 + 4 + 4
         pointCloudMsg.is_dense = false;// default false maybe it is safer even if there is no invalid point in the data
     }
+    // Create SLAM system. It initializes all system threads and gets ready to process frames.
+    pSLAM = new ORB_SLAM2::System("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.txt",
+                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
+//                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Asus.yaml", ORB_SLAM2::System::RGBD,false);
     auto rosAction = [this]() {
         int argc = 0;
         ros::init(argc, NULL, "depth_rgb_elasticfusion_sub");
@@ -76,7 +80,7 @@ RosInterface::RosInterface()
         typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
         message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub, depth_sub);
         sync.registerCallback(boost::bind(&RosInterface::depthRgbMsgCallback, this, _1,_2));
-        ros::Subscriber sub = nh.subscribe("realsense/camera_info", 10, &RosInterface::cameraInfoCallback, this);
+        ros::Subscriber sub = nh.subscribe("camera/camera_info", 10, &RosInterface::cameraInfoCallback, this);
         ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud2>("elasticfusion/point_cloud", 10);
         int previousPointCloudIndex = -1;
         tf::TransformBroadcaster br;
@@ -107,14 +111,18 @@ RosInterface::RosInterface()
 void RosInterface::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cameraInfoConstPtr) {
     if (!isCameraInitialized.getValue()) {
         cameraInfo = *cameraInfoConstPtr;
-        printf("%s\n", cameraInfo.distortion_model.c_str());
         width = cameraInfo.width;
         height = cameraInfo.height;
+        printf("CameraInfo:\n");
+        printf("width = %d, height = %d\n", width, height);
+        printf("%s\n", cameraInfo.distortion_model.c_str());
         for(int i = 0; i < numBuffers; i++) {
             uint8_t * newDepthImage = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
             uint8_t * newRgbImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
             depthBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthImage, 0);
             rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbImage, 0);
+            poseMat[i].first.setIdentity();
+            poseMat[i].second = 0;
         }
         isCameraInitialized.assign(true);
     }
@@ -161,6 +169,24 @@ void RosInterface::depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImag
     memcpy(rgbBuffers[bufferIndex].first, cvRgbImagePtr->image.data, nPixel * 3);
     depthBuffers[bufferIndex].second = lastAllFrameTime;
     rgbBuffers[bufferIndex].second = lastAllFrameTime;
+    cv::Mat m = pSLAM->TrackRGBD(cvRgbImagePtr->image,cvDepthImagePtr->image,cvRgbImagePtr->header.stamp.toSec());
+    Eigen::Matrix4f transMat;
+    transMat << m.at<float>(0, 0), m.at<float>(0, 1), m.at<float>(0, 2), m.at<float>(0, 3),
+            m.at<float>(1, 0), m.at<float>(1, 1), m.at<float>(1, 2), m.at<float>(1, 3),
+            m.at<float>(2, 0), m.at<float>(2, 1), m.at<float>(2, 2), m.at<float>(2, 3),
+            m.at<float>(3, 0), m.at<float>(3, 1), m.at<float>(3, 2), m.at<float>(3, 3);
+//    Eigen::Matrix4f invTransMat = transMat.inverse();
+//    for (int i = 0; i < 4; i++) {
+//        for (int j = 0; j < 4; j++) {
+//            printf("%f ", invTransMat(i, j));
+//        }
+//        printf("\n");
+//    }
+//    printf("\n");
+//    fflush(stdout);
+    poseMat[bufferIndex].first = transMat.inverse();
+//    poseMat[bufferIndex].first = transMat;
+    poseMat[bufferIndex].second = lastAllFrameTime;
     latestAllFrameIndex++;
 }
 
@@ -174,6 +200,7 @@ RosInterface::~RosInterface()
             free(depthBuffers[i].first);
             free(rgbBuffers[i].first);
         }
+        delete pSLAM;
     }
 }
 
