@@ -28,6 +28,9 @@ include_directories(${Pangolin_INCLUDE_DIRS})
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${EFUSION_INCLUDE_DIR})
 include_directories(${OPENNI2_INCLUDE_DIR})
+set(ORB_SOURCE_DIR "/home/gao/Downloads/ORB_SLAM2")
+include_directories(${ORB_SOURCE_DIR})
+include_directories(${ORB_SOURCE_DIR}/include)
 
 file(GLOB srcs *.cpp)
 file(GLOB tools_srcs Tools/*.cpp)
@@ -72,6 +75,9 @@ target_link_libraries(ElasticFusionRos
         ${CUDA_LIBRARIES}
         ${EFUSION_LIBRARY}
         ${catkin_LIBRARIES}
+        ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
+        ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+        ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
         )
 
 set(CMAKE_VERBOSE_MAKEFILE on)

@@ -624,9 +624,9 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
     TICK("sampleGraph");
 
-    localDeformation.sampleGraphModel(globalModel.model());
+//    localDeformation.sampleGraphModel(globalModel.model());
 
-    globalDeformation.sampleGraphFrom(localDeformation);
+//    globalDeformation.sampleGraphFrom(localDeformation);
 
     TOCK("sampleGraph");
 

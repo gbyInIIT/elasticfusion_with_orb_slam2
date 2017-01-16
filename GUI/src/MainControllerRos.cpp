@@ -55,8 +55,8 @@ MainControllerRos::MainControllerRos(int argc, char * argv[])
     icp = 10.0f;
     icpErrThresh = 5e-05;
     covThresh = 1e-05;
-//    photoThresh = 115;
-    photoThresh = 50;
+    photoThresh = 115;
+//    photoThresh = 50;
     fernThresh = 0.3095f;
 //    fernThresh = 0.2f;
 
@@ -264,7 +264,37 @@ void MainControllerRos::run()
                     *currentPose = groundTruthOdometry->getTransformation(logReader->timestamp);
                 }
 
-                eFusion->processFrame(logReader->rgb, logReader->depth, logReader->timestamp, currentPose, weightMultiplier);
+                LiveLogReaderRos * rosLogReader = (LiveLogReaderRos *) logReader;
+                RosInterface * asus = rosLogReader->asus;
+                const int lastAllFrameIdx = asus->latestAllFrameIndex.getValue();
+                const int bufferIdx = lastAllFrameIdx % RosInterface::numBuffers;
+                unsigned char * rgb = (unsigned char *) asus->rgbBuffers[bufferIdx].first;
+                unsigned short * depth = (unsigned short *) asus->depthBuffers[bufferIdx].first;
+                int64_t timestamp = asus->depthBuffers[bufferIdx].second;
+                Eigen::Matrix4f cameraPoseMat = asus->poseMat[bufferIdx].first;
+                eFusion->processFrame(rgb, depth, timestamp, &cameraPoseMat, weightMultiplier);
+//                eFusion->processFrame(rgb, depth, timestamp, 0, weightMultiplier);
+//                eFusion->processFrame(logReader->rgb, logReader->depth, logReader->timestamp, currentPose, weightMultiplier);
+                Eigen::Matrix4f cameraInvPoseMat = cameraPoseMat.inverse();
+                Eigen::Matrix4f eFusionCurPose = eFusion->getCurrPose();
+                for (int i = 0; i < 4; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        printf("%9.6f ", cameraPoseMat(i, j));
+                    }
+                    printf("\n");
+                    for (int j = 0; j < 4; j++) {
+                        printf("%9.6f ", eFusionCurPose(i, j));
+                    }
+                    printf("\n");
+//                    for (int j = 0; j < 4; j++) {
+//                        printf("%.6f ", cameraInvPoseMat(i,j));
+//                    }
+//                    printf("\n");
+                    printf("\n");
+                }
+                printf("-----------------------------------------\n");
+                printf("\n");
+                fflush(stdout);
 
                 if(currentPose)
                 {
@@ -585,12 +615,16 @@ void MainControllerRos::run()
                 for(unsigned int i = 0; i < nPoint; i++) {
                     Eigen::Vector4f pos = pointCloudData[(i * 3) + 0];
                     Eigen::Vector4f col = pointCloudData[(i * 3) + 1];
+                    Eigen::Vector4f nor = pointCloudData[(i * 3) + 2];
                     if(pos[3] > confidence) {
                         nValidPoint++;
-                        floatDataPtr[iPoint * 4 + 0] = pos[0];
-                        floatDataPtr[iPoint * 4 + 1] = pos[1];
-                        floatDataPtr[iPoint * 4 + 2] = pos[2];
-                        *(int*)(&floatDataPtr[iPoint * 4 + 3]) = int(col[0]);
+                        floatDataPtr[iPoint * 7 + 0] = pos[0];
+                        floatDataPtr[iPoint * 7 + 1] = pos[1];
+                        floatDataPtr[iPoint * 7 + 2] = pos[2];
+                        *(int*)(&floatDataPtr[iPoint * 7 + 3]) = int(col[0]);
+                        floatDataPtr[iPoint * 7 + 4] = nor[0];
+                        floatDataPtr[iPoint * 7 + 5] = nor[1];
+                        floatDataPtr[iPoint * 7 + 6] = nor[2];
                         iPoint++;
                     }
                 }

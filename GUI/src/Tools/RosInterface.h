@@ -28,6 +28,7 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/PointCloud2.h>
+#include "System.h"
 
 class RosInterface
 {
@@ -44,6 +45,7 @@ public:
     ThreadMutexObject<int> latestAllFrameIndex;
     std::pair<uint8_t *, int64_t> depthBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
+    std::pair<Eigen::Matrix4f, int64_t> poseMat[numBuffers];
     ThreadMutexObject<bool> isCameraInitialized;
     ThreadMutexObject<bool> isSystemRunning;
     sensor_msgs::CameraInfo cameraInfo;
@@ -54,6 +56,7 @@ public:
     static const int nPointCloudMsgBuffer = 10;
     sensor_msgs::PointCloud2 pointCloudMsgBuffer[nPointCloudMsgBuffer];
     ThreadMutexObject<int> latestPointCloudIndex;
+    ORB_SLAM2::System *pSLAM;
 
 private:
     std::thread rosThread;
