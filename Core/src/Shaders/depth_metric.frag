@@ -36,5 +36,6 @@ void main()
     else
     {
             FragColor = float(value) / 1000.0f / 8.f;
+//            FragColor = float(value) / 1000.0f;
     }
 }

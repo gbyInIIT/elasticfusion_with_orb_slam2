@@ -61,9 +61,27 @@ RosInterface::RosInterface()
         rgb.offset = 12;
         rgb.datatype = sensor_msgs::PointField::UINT32;
         rgb.count = 1;
-        pointCloudMsg.fields = {x, y, z, rgb};
+        sensor_msgs::PointField normal_x;
+        normal_x.name = "normal_x";
+//        normal_x.name = "nx";
+        normal_x.offset = 16;
+        normal_x.datatype = sensor_msgs::PointField::FLOAT32;
+        normal_x.count = 1;
+        sensor_msgs::PointField normal_y;
+        normal_y.name = "normal_y";
+//        normal_y.name = "ny";
+        normal_y.offset = 20;
+        normal_y.datatype = sensor_msgs::PointField::FLOAT32;
+        normal_y.count = 1;
+        sensor_msgs::PointField normal_z;
+        normal_z.name = "normal_z";
+//        normal_z.name = "nz";
+        normal_z.offset = 24;
+        normal_z.datatype = sensor_msgs::PointField::FLOAT32;
+        normal_z.count = 1;
+        pointCloudMsg.fields = {x, y, z, rgb, normal_x, normal_y, normal_z};
         pointCloudMsg.is_bigendian = false;// default is false
-        pointCloudMsg.point_step = 16;// 4 + 4 + 4 + 4
+        pointCloudMsg.point_step = 28;// 4 + 4 + 4 + 4 + 4 + 4 + 4
         pointCloudMsg.is_dense = false;// default false maybe it is safer even if there is no invalid point in the data
     }
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
