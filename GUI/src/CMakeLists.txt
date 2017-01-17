@@ -11,17 +11,20 @@ find_package(catkin REQUIRED COMPONENTS
         sensor_msgs
         tf
         )
-message(STATUS "${catkin_LIBRARIES}")
+message(STATUS "catkin_lib: ${catkin_LIBRARIES}")
 include_directories(
         ${catkin_INCLUDE_DIRS}
 )
 
+#find_package(OpenCV 3.2.0 REQUIRED)
+find_package(OpenCV 2.4.8 REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Pangolin 0.1 REQUIRED)
 find_package(CUDA REQUIRED)
 find_package(OpenNI2 REQUIRED)
 find_package(efusion REQUIRED)
 
+include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${ZLIB_INCLUDE_DIR})
 include_directories(${EIGEN_INCLUDE_DIRS})
 include_directories(${Pangolin_INCLUDE_DIRS})
@@ -74,6 +77,7 @@ target_link_libraries(ElasticFusionRos
         ${Pangolin_LIBRARIES}
         ${CUDA_LIBRARIES}
         ${EFUSION_LIBRARY}
+#        ${OpenCV_LIBRARIES}
         ${catkin_LIBRARIES}
         ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
         ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
