@@ -610,6 +610,7 @@ void MainControllerRos::run()
                 pointCloudMsg.width = nValidPoint;
                 pointCloudMsg.row_step = pointCloudMsg.point_step * pointCloudMsg.width;
                 pointCloudMsg.data.resize(pointCloudMsg.row_step);
+                const size_t nFloatToPublish = pointCloudMsg.fields.size();
                 float * floatDataPtr = reinterpret_cast<float *>(pointCloudMsg.data.data());
                 unsigned int iPoint = 0;
                 for(unsigned int i = 0; i < nPoint; i++) {
@@ -618,13 +619,15 @@ void MainControllerRos::run()
                     Eigen::Vector4f nor = pointCloudData[(i * 3) + 2];
                     if(pos[3] > confidence) {
                         nValidPoint++;
-                        floatDataPtr[iPoint * 7 + 0] = pos[0];
-                        floatDataPtr[iPoint * 7 + 1] = pos[1];
-                        floatDataPtr[iPoint * 7 + 2] = pos[2];
-                        *(int*)(&floatDataPtr[iPoint * 7 + 3]) = int(col[0]);
-                        floatDataPtr[iPoint * 7 + 4] = nor[0];
-                        floatDataPtr[iPoint * 7 + 5] = nor[1];
-                        floatDataPtr[iPoint * 7 + 6] = nor[2];
+                        floatDataPtr[iPoint * nFloatToPublish + 0] = pos[0];
+                        floatDataPtr[iPoint * nFloatToPublish + 1] = pos[1];
+                        floatDataPtr[iPoint * nFloatToPublish + 2] = pos[2];
+                        *(int*)(&floatDataPtr[iPoint * nFloatToPublish + 3]) = int(col[0]);
+                        if (nFloatToPublish == 7) {
+                            floatDataPtr[iPoint * nFloatToPublish + 4] = nor[0];
+                            floatDataPtr[iPoint * nFloatToPublish + 5] = nor[1];
+                            floatDataPtr[iPoint * nFloatToPublish + 6] = nor[2];
+                        }
                         iPoint++;
                     }
                 }
