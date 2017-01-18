@@ -61,27 +61,29 @@ RosInterface::RosInterface()
         rgb.offset = 12;
         rgb.datatype = sensor_msgs::PointField::UINT32;
         rgb.count = 1;
-        sensor_msgs::PointField normal_x;
-        normal_x.name = "normal_x";
-//        normal_x.name = "nx";
-        normal_x.offset = 16;
-        normal_x.datatype = sensor_msgs::PointField::FLOAT32;
-        normal_x.count = 1;
-        sensor_msgs::PointField normal_y;
-        normal_y.name = "normal_y";
-//        normal_y.name = "ny";
-        normal_y.offset = 20;
-        normal_y.datatype = sensor_msgs::PointField::FLOAT32;
-        normal_y.count = 1;
-        sensor_msgs::PointField normal_z;
-        normal_z.name = "normal_z";
-//        normal_z.name = "nz";
-        normal_z.offset = 24;
-        normal_z.datatype = sensor_msgs::PointField::FLOAT32;
-        normal_z.count = 1;
-        pointCloudMsg.fields = {x, y, z, rgb, normal_x, normal_y, normal_z};
+//        sensor_msgs::PointField normal_x;
+//        normal_x.name = "normal_x";
+////        normal_x.name = "nx";
+//        normal_x.offset = 16;
+//        normal_x.datatype = sensor_msgs::PointField::FLOAT32;
+//        normal_x.count = 1;
+//        sensor_msgs::PointField normal_y;
+//        normal_y.name = "normal_y";
+////        normal_y.name = "ny";
+//        normal_y.offset = 20;
+//        normal_y.datatype = sensor_msgs::PointField::FLOAT32;
+//        normal_y.count = 1;
+//        sensor_msgs::PointField normal_z;
+//        normal_z.name = "normal_z";
+////        normal_z.name = "nz";
+//        normal_z.offset = 24;
+//        normal_z.datatype = sensor_msgs::PointField::FLOAT32;
+//        normal_z.count = 1;
+        pointCloudMsg.fields = {x, y, z, rgb};
+//        pointCloudMsg.fields = {x, y, z, rgb, normal_x, normal_y, normal_z};
         pointCloudMsg.is_bigendian = false;// default is false
-        pointCloudMsg.point_step = 28;// 4 + 4 + 4 + 4 + 4 + 4 + 4
+        pointCloudMsg.point_step = 16;// 4 + 4 + 4 + 4
+//        pointCloudMsg.point_step = 28;// 4 + 4 + 4 + 4 + 4 + 4 + 4
         pointCloudMsg.is_dense = false;// default false maybe it is safer even if there is no invalid point in the data
     }
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
@@ -100,6 +102,7 @@ RosInterface::RosInterface()
         sync.registerCallback(boost::bind(&RosInterface::depthRgbMsgCallback, this, _1,_2));
         ros::Subscriber sub = nh.subscribe("camera/camera_info", 10, &RosInterface::cameraInfoCallback, this);
         ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud2>("elasticfusion/point_cloud", 10);
+        ros::Publisher posePub = nh.advertise<geometry_msgs::PoseStamped>("orb_slam2/camera_pose", 10);
         int previousPointCloudIndex = -1;
         tf::TransformBroadcaster br;
         tf::Transform transform;
@@ -107,16 +110,51 @@ RosInterface::RosInterface()
         tf::Quaternion q;
         q.setRPY(0, 0, 0);
         transform.setRotation(q);
+        ros::Rate rate(30);
         while(ros::ok() && isSystemRunning.getValue()) {
+            ros::spinOnce();
+            ros::Time current_time = ros::Time::now();
             const int currentPointCloudIndex = latestPointCloudIndex.getValue();
             if (currentPointCloudIndex != previousPointCloudIndex) {
                 previousPointCloudIndex = currentPointCloudIndex;
                 int bufferIndex = currentPointCloudIndex % nPointCloudMsgBuffer;
+                br.sendTransform(tf::StampedTransform(transform, current_time, "iiwa_base", "elasticfusion_point_cloud"));
                 pub.publish(pointCloudMsgBuffer[bufferIndex]);
-                br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "elasticfusion_point_cloud"));
             }
-            ros::spinOnce();
-            usleep(100);
+            if (latestAllFrameIndex.getValue() >= 0) {
+                const int bufferIndex = latestAllFrameIndex.getValue() % numBuffers;
+                Eigen::Matrix4f cameraToCloudTransMat = poseMat[bufferIndex].first;
+                tf::Matrix3x3 cameraToCloudRotMat(cameraToCloudTransMat(0, 0), cameraToCloudTransMat(0, 1), cameraToCloudTransMat(0, 2),
+                                                  cameraToCloudTransMat(1, 0), cameraToCloudTransMat(1, 1), cameraToCloudTransMat(1, 2),
+                                                  cameraToCloudTransMat(2, 0), cameraToCloudTransMat(2, 1), cameraToCloudTransMat(2, 2));
+                tf::Vector3 cameraToCloudTranslationVec(cameraToCloudTransMat(0, 3), cameraToCloudTransMat(1, 3), cameraToCloudTransMat(2, 3));
+                tf::Transform cameraToCloudTrans(cameraToCloudRotMat, cameraToCloudTranslationVec);
+                br.sendTransform(tf::StampedTransform(cameraToCloudTrans, current_time, "elasticfusion_point_cloud", "realsense_camera"));
+                geometry_msgs::Pose cameraPose;
+                geometry_msgs::Point cameraPosePoint;
+                geometry_msgs::Quaternion cameraPoseQuaternion;
+                cameraPosePoint.x = cameraToCloudTranslationVec.x();
+                cameraPosePoint.y = cameraToCloudTranslationVec.y();
+                cameraPosePoint.z = cameraToCloudTranslationVec.z();
+                tf::Quaternion tmpQ;
+                cameraToCloudRotMat.getRotation(tmpQ);
+//                tf::Matrix3x3 cameraToCloudRotMatInv = cameraToCloudRotMat.inverse();
+//                cameraToCloudRotMatInv.getRotation(tmpQ);
+                cameraPoseQuaternion.x = tmpQ.x();
+                cameraPoseQuaternion.y = tmpQ.y();
+                cameraPoseQuaternion.z = tmpQ.z();
+                cameraPoseQuaternion.w = tmpQ.w();
+                cameraPose.position = cameraPosePoint;
+                cameraPose.orientation = cameraPoseQuaternion;
+                geometry_msgs::PoseStamped cameraPoseStamped;
+                cameraPoseStamped.header.frame_id = "elasticfusion_point_cloud";
+                cameraPoseStamped.header.stamp = current_time;
+                cameraPoseStamped.header.seq = 0;
+                cameraPoseStamped.pose = cameraPose;
+                posePub.publish(cameraPoseStamped);
+            }
+//            usleep(100);
+            rate.sleep();
         }
         ros::shutdown();
     };
