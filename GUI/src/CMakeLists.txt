@@ -23,6 +23,7 @@ find_package(Pangolin 0.1 REQUIRED)
 find_package(CUDA REQUIRED)
 find_package(OpenNI2 REQUIRED)
 find_package(efusion REQUIRED)
+message(STATUS "efustion lib: ${EFUSION_LIBRARIES}")
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${ZLIB_INCLUDE_DIR})
@@ -85,3 +86,5 @@ target_link_libraries(ElasticFusionRos
         )
 
 set(CMAKE_VERBOSE_MAKEFILE on)
+add_dependencies(ElasticFusion efusion)
+add_dependencies(ElasticFusionRos efusion)
