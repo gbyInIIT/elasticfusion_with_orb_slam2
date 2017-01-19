@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
         sensor_msgs
         tf
         )
-message(STATUS "${catkin_LIBRARIES}")
+message(STATUS "catkin_lib: ${catkin_LIBRARIES}")
 include_directories(
         ${catkin_INCLUDE_DIRS}
 )
@@ -74,6 +74,7 @@ target_link_libraries(ElasticFusionRos
         ${Pangolin_LIBRARIES}
         ${CUDA_LIBRARIES}
         ${EFUSION_LIBRARY}
+#        ${OpenCV_LIBRARIES}
         ${catkin_LIBRARIES}
         ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
         ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
