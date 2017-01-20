@@ -124,6 +124,7 @@ class GlobalModel
         pangolin::GlFramebuffer frameBuffer;
         GLuint uvo;
         int uvSize;
+        Eigen::Vector4f * verticesForSaving;
 };
 
 #endif /* GLOBALMODEL_H_ */

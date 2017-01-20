@@ -40,6 +40,9 @@ GlobalModel::GlobalModel()
    updateMapNormsRadii(TEXTURE_DIMENSION, TEXTURE_DIMENSION, GL_RGBA32F, GL_LUMINANCE, GL_FLOAT),
    deformationNodes(NODE_TEXTURE_DIMENSION, 1, GL_LUMINANCE32F_ARB, GL_LUMINANCE, GL_FLOAT)
 {
+    verticesForSaving = new Eigen::Vector4f[MAX_VERTICES * 3];
+    memset(&verticesForSaving[0], 0, MAX_VERTICES * Vertex::SIZE);
+
     vbos = new std::pair<GLuint, GLuint>[2];
 
     float * vertices = new float[bufferSize];
@@ -195,6 +198,7 @@ GlobalModel::~GlobalModel()
     glDeleteBuffers(1, &newUnstableVbo);
 
     delete [] vbos;
+    delete [] verticesForSaving;
 }
 
 void GlobalModel::initialise(const FeedbackBuffer & rawFeedback,
@@ -606,9 +610,9 @@ Eigen::Vector4f * GlobalModel::downloadMap()
 {
     glFinish();
 
-    Eigen::Vector4f * vertices = new Eigen::Vector4f[count * 3];
+//    Eigen::Vector4f * vertices = new Eigen::Vector4f[count * 3];
 
-    memset(&vertices[0], 0, count * Vertex::SIZE);
+//    memset(&vertices[0], 0, count * Vertex::SIZE);
 
     GLuint downloadVbo;
 
@@ -621,7 +625,8 @@ Eigen::Vector4f * GlobalModel::downloadMap()
     glBindBuffer(GL_COPY_WRITE_BUFFER, downloadVbo);
 
     glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, count * Vertex::SIZE);
-    glGetBufferSubData(GL_COPY_WRITE_BUFFER, 0, count * Vertex::SIZE, vertices);
+//    glGetBufferSubData(GL_COPY_WRITE_BUFFER, 0, count * Vertex::SIZE, vertices);
+    glGetBufferSubData(GL_COPY_WRITE_BUFFER, 0, count * Vertex::SIZE, verticesForSaving);
 
     glBindBuffer(GL_COPY_READ_BUFFER, 0);
     glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
@@ -629,5 +634,6 @@ Eigen::Vector4f * GlobalModel::downloadMap()
 
     glFinish();
 
-    return vertices;
+//    return vertices;
+    return verticesForSaving;
 }
