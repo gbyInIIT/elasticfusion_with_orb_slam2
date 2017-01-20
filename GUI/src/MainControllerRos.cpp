@@ -632,7 +632,7 @@ void MainControllerRos::run()
                     }
                 }
                 rosInterface->latestPointCloudIndex++;
-                delete [] pointCloudData;
+//                delete [] pointCloudData;
             };
             std::thread updatePointCloudMsgBufferThread(updatePointCloudMsgBufferAction);
             updatePointCloudMsgBufferThread.detach();
