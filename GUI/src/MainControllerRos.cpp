@@ -203,7 +203,7 @@ void MainControllerRos::run()
     auto pointCloudClockAction = [&isPublishPointCloud, &isExit]() {
         int i = 0;
         while (!isExit.getValue()) {
-            usleep(1000000);
+            usleep(100000);
             isPublishPointCloud.assign(true);
 //            printf("tick %d\n", i++);
 //            fflush(stdout);
