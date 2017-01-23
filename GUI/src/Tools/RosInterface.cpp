@@ -129,7 +129,7 @@ RosInterface::RosInterface()
                                                   cameraToCloudTransMat(2, 0), cameraToCloudTransMat(2, 1), cameraToCloudTransMat(2, 2));
                 tf::Vector3 cameraToCloudTranslationVec(cameraToCloudTransMat(0, 3), cameraToCloudTransMat(1, 3), cameraToCloudTransMat(2, 3));
                 tf::Transform cameraToCloudTrans(cameraToCloudRotMat, cameraToCloudTranslationVec);
-                br.sendTransform(tf::StampedTransform(cameraToCloudTrans, current_time, "elasticfusion_point_cloud", "realsense_camera"));
+                br.sendTransform(tf::StampedTransform(cameraToCloudTrans, current_time, "iiwa_base", "realsense_camera"));
                 geometry_msgs::Pose cameraPose;
                 geometry_msgs::Point cameraPosePoint;
                 geometry_msgs::Quaternion cameraPoseQuaternion;
