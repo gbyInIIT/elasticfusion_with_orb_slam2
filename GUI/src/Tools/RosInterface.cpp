@@ -27,7 +27,7 @@
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <tf/transform_broadcaster.h>
-#include <turtlesim/Pose.h>
+//#include <turtlesim/Pose.h>
 
 RosInterface::RosInterface()
  : width(-1),
@@ -183,6 +183,7 @@ void RosInterface::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cam
         isCameraInitialized.assign(true);
     }
 }
+
 void RosInterface::depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImage, const sensor_msgs::ImageConstPtr& depthImage)
 {
     if (!isCameraInitialized.getValue()) {
@@ -259,5 +260,4 @@ RosInterface::~RosInterface()
         delete pSLAM;
     }
 }
-
 
