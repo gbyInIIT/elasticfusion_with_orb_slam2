@@ -47,7 +47,7 @@ public:
     ros::Time rgbImageRosTimeBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> depthBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
-    std::pair<Eigen::Matrix4f, int64_t> poseMat[numBuffers];
+    std::pair<Eigen::Matrix4f, int64_t> cameraToObjectTransMatBuffers[numBuffers];
     ThreadMutexObject<bool> isCameraInitialized;
     ThreadMutexObject<bool> isSystemRunning;
     sensor_msgs::CameraInfo cameraInfo;
