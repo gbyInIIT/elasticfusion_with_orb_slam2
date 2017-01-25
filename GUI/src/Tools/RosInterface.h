@@ -25,6 +25,7 @@
 #include <map>
 
 #include "ThreadMutexObject.h"
+#include <ros/ros.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -43,6 +44,7 @@ public:
 
     static const int numBuffers = 100;
     ThreadMutexObject<int> latestAllFrameIndex;
+    ros::Time rgbImageRosTimeBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> depthBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
     std::pair<Eigen::Matrix4f, int64_t> poseMat[numBuffers];

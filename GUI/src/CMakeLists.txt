@@ -100,6 +100,18 @@ target_link_libraries(HandEyeCalibrate
         ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
         )
 
+target_link_libraries(HandEyeCalibrate
+        ${ZLIB_LIBRARY}
+        ${Pangolin_LIBRARIES}
+        ${CUDA_LIBRARIES}
+        ${EFUSION_LIBRARY}
+        #        ${OpenCV_LIBRARIES}
+        ${catkin_LIBRARIES}
+        ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
+        ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+        ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
+        )
+
 set(CMAKE_VERBOSE_MAKEFILE on)
 add_dependencies(ElasticFusion efusion)
 add_dependencies(ElasticFusionRos efusion)
