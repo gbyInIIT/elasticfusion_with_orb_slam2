@@ -226,6 +226,7 @@ void RosInterface::depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImag
     memcpy(rgbBuffers[bufferIndex].first, cvRgbImagePtr->image.data, nPixel * 3);
     depthBuffers[bufferIndex].second = lastAllFrameTime;
     rgbBuffers[bufferIndex].second = lastAllFrameTime;
+    rgbImageRosTimeBuffers[bufferIndex] = rgbImage->header.stamp;
     cv::Mat m = pSLAM->TrackRGBD(cvRgbImagePtr->image,cvDepthImagePtr->image,cvRgbImagePtr->header.stamp.toSec());
     Eigen::Matrix4f transMat;
     transMat << m.at<float>(0, 0), m.at<float>(0, 1), m.at<float>(0, 2), m.at<float>(0, 3),
