@@ -271,7 +271,7 @@ void MainControllerRos::run()
                 unsigned char * rgb = (unsigned char *) asus->rgbBuffers[bufferIdx].first;
                 unsigned short * depth = (unsigned short *) asus->depthBuffers[bufferIdx].first;
                 int64_t timestamp = asus->depthBuffers[bufferIdx].second;
-                Eigen::Matrix4f cameraPoseMat = asus->poseMat[bufferIdx].first;
+                Eigen::Matrix4f cameraPoseMat = asus->cameraToObjectTransMatBuffers[bufferIdx].first;
                 eFusion->processFrame(rgb, depth, timestamp, &cameraPoseMat, weightMultiplier);
 //                eFusion->processFrame(rgb, depth, timestamp, 0, weightMultiplier);
 //                eFusion->processFrame(logReader->rgb, logReader->depth, logReader->timestamp, currentPose, weightMultiplier);

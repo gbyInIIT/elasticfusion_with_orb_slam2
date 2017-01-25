@@ -123,22 +123,22 @@ RosInterface::RosInterface()
             }
             if (latestAllFrameIndex.getValue() >= 0) {
                 const int bufferIndex = latestAllFrameIndex.getValue() % numBuffers;
-                Eigen::Matrix4f cameraToCloudTransMat = poseMat[bufferIndex].first;
-                tf::Matrix3x3 cameraToCloudRotMat(cameraToCloudTransMat(0, 0), cameraToCloudTransMat(0, 1), cameraToCloudTransMat(0, 2),
-                                                  cameraToCloudTransMat(1, 0), cameraToCloudTransMat(1, 1), cameraToCloudTransMat(1, 2),
-                                                  cameraToCloudTransMat(2, 0), cameraToCloudTransMat(2, 1), cameraToCloudTransMat(2, 2));
-                tf::Vector3 cameraToCloudTranslationVec(cameraToCloudTransMat(0, 3), cameraToCloudTransMat(1, 3), cameraToCloudTransMat(2, 3));
-                tf::Transform cameraToCloudTrans(cameraToCloudRotMat, cameraToCloudTranslationVec);
+                Eigen::Matrix4f cameraToObjectTransMat = cameraToObjectTransMatBuffers[bufferIndex].first;
+                tf::Matrix3x3 cameraToObjectRotMat(cameraToObjectTransMat(0, 0), cameraToObjectTransMat(0, 1), cameraToObjectTransMat(0, 2),
+                                                  cameraToObjectTransMat(1, 0), cameraToObjectTransMat(1, 1), cameraToObjectTransMat(1, 2),
+                                                  cameraToObjectTransMat(2, 0), cameraToObjectTransMat(2, 1), cameraToObjectTransMat(2, 2));
+                tf::Vector3 cameraToWorldTranslationVec(cameraToObjectTransMat(0, 3), cameraToObjectTransMat(1, 3), cameraToObjectTransMat(2, 3));
+                tf::Transform cameraToCloudTrans(cameraToObjectRotMat, cameraToWorldTranslationVec);
                 br.sendTransform(tf::StampedTransform(cameraToCloudTrans, current_time, "iiwa_base", "realsense_camera"));
                 geometry_msgs::Pose cameraPose;
                 geometry_msgs::Point cameraPosePoint;
                 geometry_msgs::Quaternion cameraPoseQuaternion;
-                cameraPosePoint.x = cameraToCloudTranslationVec.x();
-                cameraPosePoint.y = cameraToCloudTranslationVec.y();
-                cameraPosePoint.z = cameraToCloudTranslationVec.z();
+                cameraPosePoint.x = cameraToWorldTranslationVec.x();
+                cameraPosePoint.y = cameraToWorldTranslationVec.y();
+                cameraPosePoint.z = cameraToWorldTranslationVec.z();
                 tf::Quaternion tmpQ;
-                cameraToCloudRotMat.getRotation(tmpQ);
-//                tf::Matrix3x3 cameraToCloudRotMatInv = cameraToCloudRotMat.inverse();
+                cameraToObjectRotMat.getRotation(tmpQ);
+//                tf::Matrix3x3 cameraToCloudRotMatInv = cameraToObjectRotMat.inverse();
 //                cameraToCloudRotMatInv.getRotation(tmpQ);
                 cameraPoseQuaternion.x = tmpQ.x();
                 cameraPoseQuaternion.y = tmpQ.y();
@@ -177,8 +177,8 @@ void RosInterface::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cam
             uint8_t * newRgbImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
             depthBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthImage, 0);
             rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbImage, 0);
-            poseMat[i].first.setIdentity();
-            poseMat[i].second = 0;
+            cameraToObjectTransMatBuffers[i].first.setIdentity();
+            cameraToObjectTransMatBuffers[i].second = 0;
         }
         isCameraInitialized.assign(true);
     }
@@ -242,9 +242,9 @@ void RosInterface::depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImag
 //    }
 //    printf("\n");
 //    fflush(stdout);
-    poseMat[bufferIndex].first = transMat.inverse();
-//    poseMat[bufferIndex].first = transMat;
-    poseMat[bufferIndex].second = lastAllFrameTime;
+    cameraToObjectTransMatBuffers[bufferIndex].first = transMat.inverse();
+//    cameraToObjectTransMatBuffers[bufferIndex].first = transMat;
+    cameraToObjectTransMatBuffers[bufferIndex].second = lastAllFrameTime;
     latestAllFrameIndex++;
 }
 
