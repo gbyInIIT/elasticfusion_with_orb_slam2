@@ -7,6 +7,7 @@
 #include <tf/transform_broadcaster.h>
 #include <visp_hand2eye_calibration/TransformArray.h>
 #include <visp_hand2eye_calibration/compute_effector_camera_quick.h>
+#include "Tools/ThreadMutexObject.h"
 
 int main(int argc, char * argv[])
 {
@@ -18,18 +19,18 @@ int main(int argc, char * argv[])
     ros::Publisher worldToHandPub = node.advertise<visp_hand2eye_calibration::TransformArray>("world_effector", 10);
     ros::Publisher cameraToObjectPub = node.advertise<visp_hand2eye_calibration::TransformArray>("camera_object", 10);
     ros::ServiceClient serviceClient = node.serviceClient<visp_hand2eye_calibration::compute_effector_camera_quick>("compute_effector_camera_quick");
-    visp_hand2eye_calibration::compute_effector_camera_quick srv;
     cv::namedWindow( "RGB", cv::WINDOW_AUTOSIZE );
     cv::namedWindow( "Depth", cv::WINDOW_AUTOSIZE );
     ros::Rate rate(30);
     visp_hand2eye_calibration::TransformArray cameraToObjectRosTransformArray;
     visp_hand2eye_calibration::TransformArray worldToHandRosTransformArray;
-    const size_t sizeOfCalibrationArray = 100;
+    const size_t sizeOfCalibrationArray = 200;
     cameraToObjectRosTransformArray.transforms.resize(sizeOfCalibrationArray);
     worldToHandRosTransformArray.transforms.resize(sizeOfCalibrationArray);
     int iCalibrationArray = 0;
     unsigned int iCalibrationArraySent = 0;
-    tf::Transform cameraToFlangeRosTransform;
+//    tf::Transform cameraToFlangeRosTransform;
+    ThreadMutexObject<tf::Transform> cameraToFlangeRosTransform;
     while(node.ok()) {
         tf::StampedTransform transform;
         const int imageIdx = asus->latestAllFrameIndex.getValue();
@@ -42,7 +43,8 @@ int main(int argc, char * argv[])
                 ros::Duration timeout(300);
 //                listener.waitForTransform("iiwa_base", "flange", rgbImageRosTime, timeout);
 //                listener.lookupTransform("iiwa_base", "flange", rgbImageRosTime, transform);
-                listener.lookupTransform("flange", "iiwa_base", rgbImageRosTime, transform);
+//                listener.lookupTransform("flange", "iiwa_base", rgbImageRosTime, transform);
+                listener.lookupTransform("flange", "iiwa_base", ros::Time(0), transform);
             }
             catch (tf::TransformException &ex) {
                 ROS_ERROR("%s",ex.what());
@@ -50,9 +52,10 @@ int main(int argc, char * argv[])
                 rate.sleep();
                 continue;
             }
+            br.sendTransform(tf::StampedTransform(transform.inverse(), nowRosTime, "iiwa_base", "flange_check"));
             tf::Quaternion q = transform.getRotation();
-            printf("flange to iiwa_base:\n");
-            printf("x=%f, y=%f, z=%f, w=%f\n", q.getX(), q.getY(), q.getZ(), q.getW());
+//            printf("flange to iiwa_base:\n");
+//            printf("x=%f, y=%f, z=%f, w=%f\n", q.getX(), q.getY(), q.getZ(), q.getW());
 
             tf::Matrix3x3 cameraToObjectRotMat(cameraToObjectTransMat(0, 0), cameraToObjectTransMat(0, 1), cameraToObjectTransMat(0, 2),
                                                cameraToObjectTransMat(1, 0), cameraToObjectTransMat(1, 1), cameraToObjectTransMat(1, 2),
@@ -60,9 +63,18 @@ int main(int argc, char * argv[])
             tf::Quaternion cameraToObjectQuaternion;
             cameraToObjectRotMat.getRotation(cameraToObjectQuaternion);
             tf::Vector3 cameraToObjectTranslationVec(cameraToObjectTransMat(0, 3), cameraToObjectTransMat(1, 3), cameraToObjectTransMat(2, 3));
+            tf::Transform cameraToObjectTfTransform(cameraToObjectRotMat, cameraToObjectTranslationVec);
+            cameraToObjectTfTransform = cameraToObjectTfTransform.inverse();
+            cameraToObjectQuaternion = cameraToObjectTfTransform.getRotation();
+            cameraToObjectTranslationVec = cameraToObjectTfTransform.getOrigin();
 
             tf::Quaternion worldToHandQuaternion = transform.getRotation();
             tf::Vector3 worldToHandTranslationVec = transform.getOrigin();
+            tf::Transform worldToHandTfTransform(transform);
+            worldToHandTfTransform = worldToHandTfTransform.inverse();
+            worldToHandQuaternion = worldToHandTfTransform.getRotation();
+            worldToHandTranslationVec = worldToHandTfTransform.getOrigin();
+
 
             if (iCalibrationArray < sizeOfCalibrationArray) {
 //                camera to object transformation
@@ -97,25 +109,31 @@ int main(int argc, char * argv[])
                 worldToHandPub.publish(worldToHandRosTransformArray);
                 iCalibrationArraySent++;
                 iCalibrationArray = 0;
-                srv.request.camera_object = cameraToObjectRosTransformArray;
-                srv.request.world_effector = worldToHandRosTransformArray;
-                if (serviceClient.call(srv)) {
-                    ROS_INFO("fine:) \n");
-                    tf::Vector3 cameraToFlangeTranslationVec(srv.response.effector_camera.translation.x,
-                                                             srv.response.effector_camera.translation.y,
-                                                             srv.response.effector_camera.translation.z);
-                    tf::Quaternion cameraToFlangeQuaternion(srv.response.effector_camera.rotation.x,
-                                                            srv.response.effector_camera.rotation.y,
-                                                            srv.response.effector_camera.rotation.z,
-                                                            srv.response.effector_camera.rotation.w);
-                    cameraToFlangeRosTransform.setRotation(cameraToFlangeQuaternion);
-                    cameraToFlangeRosTransform.setOrigin(cameraToFlangeTranslationVec);
-                } else {
-                    ROS_ERROR("Failed to call service add_two_ints");
-                }
+                auto calibrationAction = [&cameraToObjectRosTransformArray, &worldToHandRosTransformArray, &serviceClient, &cameraToFlangeRosTransform]() {
+                    visp_hand2eye_calibration::compute_effector_camera_quick srv;
+                    srv.request.camera_object = cameraToObjectRosTransformArray;
+                    srv.request.world_effector = worldToHandRosTransformArray;
+                    if (serviceClient.call(srv)) {
+                        ROS_INFO("fine:) \n");
+                        tf::Vector3 cameraToFlangeTranslationVec(srv.response.effector_camera.translation.x,
+                                                                 srv.response.effector_camera.translation.y,
+                                                                 srv.response.effector_camera.translation.z);
+                        tf::Quaternion cameraToFlangeQuaternion(srv.response.effector_camera.rotation.x,
+                                                                srv.response.effector_camera.rotation.y,
+                                                                srv.response.effector_camera.rotation.z,
+                                                                srv.response.effector_camera.rotation.w);
+                        tf::Transform tmpTrans(cameraToFlangeQuaternion, cameraToFlangeTranslationVec);
+                        cameraToFlangeRosTransform.assign(tmpTrans);
+//                    cameraToFlangeRosTransform = cameraToFlangeRosTransform.inverse();
+                    } else {
+                        ROS_ERROR("Failed to call service add_two_ints");
+                    }
+                };
+                std::thread calibrationActionThread(calibrationAction);
+                calibrationActionThread.detach();
             }
             if (iCalibrationArraySent > 0) {
-                br.sendTransform(tf::StampedTransform(cameraToFlangeRosTransform, nowRosTime, "iiwa_base", "realsense_camera_calibrated"));
+                br.sendTransform(tf::StampedTransform(cameraToFlangeRosTransform.getValue(), nowRosTime, "flange_check", "realsense_camera_calibrated"));
             }
             cv::Size size(asus->width, asus->height);
             cv::Mat rgbImage(size, CV_8UC3, asus->rgbBuffers[buffIdx].first);
