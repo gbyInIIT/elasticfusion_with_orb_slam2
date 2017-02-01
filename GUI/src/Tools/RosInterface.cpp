@@ -124,12 +124,13 @@ RosInterface::RosInterface()
             if (latestAllFrameIndex.getValue() >= 0) {
                 const int bufferIndex = latestAllFrameIndex.getValue() % numBuffers;
                 Eigen::Matrix4f cameraToObjectTransMat = cameraToObjectTransMatBuffers[bufferIndex].first;
+                ros::Time imageRosTime = rgbImageRosTimeBuffers[bufferIndex];
                 tf::Matrix3x3 cameraToObjectRotMat(cameraToObjectTransMat(0, 0), cameraToObjectTransMat(0, 1), cameraToObjectTransMat(0, 2),
                                                   cameraToObjectTransMat(1, 0), cameraToObjectTransMat(1, 1), cameraToObjectTransMat(1, 2),
                                                   cameraToObjectTransMat(2, 0), cameraToObjectTransMat(2, 1), cameraToObjectTransMat(2, 2));
                 tf::Vector3 cameraToWorldTranslationVec(cameraToObjectTransMat(0, 3), cameraToObjectTransMat(1, 3), cameraToObjectTransMat(2, 3));
                 tf::Transform cameraToCloudTrans(cameraToObjectRotMat, cameraToWorldTranslationVec);
-                br.sendTransform(tf::StampedTransform(cameraToCloudTrans, current_time, "iiwa_base", "realsense_camera"));
+//                br.sendTransform(tf::StampedTransform(cameraToCloudTrans, current_time, "iiwa_base", "realsense_camera"));
                 geometry_msgs::Pose cameraPose;
                 geometry_msgs::Point cameraPosePoint;
                 geometry_msgs::Quaternion cameraPoseQuaternion;
@@ -147,8 +148,8 @@ RosInterface::RosInterface()
                 cameraPose.position = cameraPosePoint;
                 cameraPose.orientation = cameraPoseQuaternion;
                 geometry_msgs::PoseStamped cameraPoseStamped;
-                cameraPoseStamped.header.frame_id = "elasticfusion_point_cloud";
-                cameraPoseStamped.header.stamp = current_time;
+                cameraPoseStamped.header.frame_id = "iiwa_base";
+                cameraPoseStamped.header.stamp = imageRosTime;
                 cameraPoseStamped.header.seq = 0;
                 cameraPoseStamped.pose = cameraPose;
                 posePub.publish(cameraPoseStamped);
