@@ -118,7 +118,7 @@ RosInterface::RosInterface()
             if (currentPointCloudIndex != previousPointCloudIndex) {
                 previousPointCloudIndex = currentPointCloudIndex;
                 int bufferIndex = currentPointCloudIndex % nPointCloudMsgBuffer;
-                br.sendTransform(tf::StampedTransform(transform, current_time, "iiwa_base", "elasticfusion_point_cloud"));
+//                br.sendTransform(tf::StampedTransform(transform, current_time, "iiwa_base", "elasticfusion_point_cloud"));
                 pub.publish(pointCloudMsgBuffer[bufferIndex]);
             }
             if (latestAllFrameIndex.getValue() >= 0) {
