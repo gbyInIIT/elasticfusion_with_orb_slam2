@@ -186,7 +186,8 @@ void MainControllerRos::launch()
                                         fernThresh,
                                         so3,
                                         frameToFrameRGB,
-                                        logReader->getFile());
+//                                        logReader->getFile());
+                                        "gby_efusion_saved");
         }
         else
         {
@@ -199,17 +200,17 @@ void MainControllerRos::launch()
 void MainControllerRos::run()
 {
     ThreadMutexObject<bool> isExit(false);
-    ThreadMutexObject<bool> isPublishPointCloud(false);
-    auto pointCloudClockAction = [&isPublishPointCloud, &isExit]() {
-        int i = 0;
-        while (!isExit.getValue()) {
-            usleep(100000);
-            isPublishPointCloud.assign(true);
-//            printf("tick %d\n", i++);
-//            fflush(stdout);
-        }
-    };
-    std::thread pointCloudClockThread(pointCloudClockAction);
+    ThreadMutexObject<bool> isPublishPointCloud(true);
+//    auto pointCloudClockAction = [&isPublishPointCloud, &isExit]() {
+//        int i = 0;
+//        while (!isExit.getValue()) {
+//            usleep(100000);
+//            isPublishPointCloud.assign(true);
+////            printf("tick %d\n", i++);
+////            fflush(stdout);
+//        }
+//    };
+//    std::thread pointCloudClockThread(pointCloudClockAction);
 
     while(!pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
     {
@@ -579,15 +580,22 @@ void MainControllerRos::run()
 
         if(pangolin::Pushed(*gui->save))
         {
+            while(!isPublishPointCloud.getValue()) {
+                usleep(1000);
+            }
+            printf("Saving cloud...");
+            fflush(stdout);
             eFusion->savePly();
+            printf("Done.\n");
         }
 
         if (isPublishPointCloud.getValue()) {
+            isPublishPointCloud.assign(false);
             std::pair<Eigen::Vector4f *, unsigned int> pointCloudDataAndCount = eFusion->getPointCloudData();
             Eigen::Vector4f * pointCloudData = pointCloudDataAndCount.first;
             const unsigned int nPoint = pointCloudDataAndCount.second;
 //            printf("nPoint returned from GPU: %d\n", nPoint);
-            auto updatePointCloudMsgBufferAction = [pointCloudData, nPoint, this]() {
+            auto updatePointCloudMsgBufferAction = [&isPublishPointCloud, pointCloudData, nPoint, this]() {
                 LiveLogReaderRos * liveLogReaderRos = (LiveLogReaderRos*)logReader;
                 RosInterface * rosInterface = liveLogReaderRos->asus;
                 const int seq = rosInterface->latestPointCloudIndex.getValue() + 1;
@@ -633,13 +641,13 @@ void MainControllerRos::run()
                 }
                 rosInterface->latestPointCloudIndex++;
 //                delete [] pointCloudData;
+                isPublishPointCloud.assign(true);
             };
             std::thread updatePointCloudMsgBufferThread(updatePointCloudMsgBufferAction);
             updatePointCloudMsgBufferThread.detach();
-            isPublishPointCloud.assign(false);
         }
         TOCK("GUI");
     }
     isExit.assign(true);
-    pointCloudClockThread.join();
+//    pointCloudClockThread.join();
 }
