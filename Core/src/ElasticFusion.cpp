@@ -819,8 +819,9 @@ void ElasticFusion::savePly()
 
     // Close file
     fs.close ();
+    printf("Cloud saved in: %s\n", filename.c_str());
 
-    delete [] mapData;
+//    delete [] mapData;
 }
 
 Eigen::Vector3f ElasticFusion::rodrigues2(const Eigen::Matrix3f& matrix)
