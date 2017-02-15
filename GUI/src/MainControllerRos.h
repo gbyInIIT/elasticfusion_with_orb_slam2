@@ -24,6 +24,7 @@
 #include "Tools/RawLogReader.h"
 #include "Tools/LiveLogReader.h"
 #include "Tools/LiveLogReaderRos.h"
+#include "Tools/ThreadMutexObject.h"
 
 #ifndef MAINCONTROLLERROS_H_
 #define MAINCONTROLLERROS_H_
@@ -31,6 +32,7 @@
 class MainControllerRos
 {
     public:
+        ThreadMutexObject<bool> isMainControllerRunning;
         MainControllerRos(int argc, char * argv[]);
         virtual ~MainControllerRos();
 
