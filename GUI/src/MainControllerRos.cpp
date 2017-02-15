@@ -27,7 +27,8 @@ MainControllerRos::MainControllerRos(int argc, char * argv[])
    logReader(0),
    framesToSkip(0),
    resetButton(false),
-   resizeStream(0)
+   resizeStream(0),
+   isMainControllerRunning(true)
 {
     std::string empty;
     iclnuim = Parse::get().arg(argc, argv, "-icl", empty) > -1;
@@ -91,6 +92,9 @@ MainControllerRos::MainControllerRos(int argc, char * argv[])
 
     gui = new GUI(logFile.length() == 0, Parse::get().arg(argc, argv, "-sc", empty) > -1);
 
+    gui->drawDeforms->Ref().Set(false);
+    gui->drawColors->Ref().Set(true);
+    gui->drawPoints->Ref().Set(true);
     gui->flipColors->Ref().Set(logReader->flipColors);
     gui->rgbOnly->Ref().Set(false);
     gui->pyramid->Ref().Set(true);
@@ -200,20 +204,8 @@ void MainControllerRos::launch()
 
 void MainControllerRos::run()
 {
-    ThreadMutexObject<bool> isExit(false);
     ThreadMutexObject<bool> isPublishPointCloud(true);
-//    auto pointCloudClockAction = [&isPublishPointCloud, &isExit]() {
-//        int i = 0;
-//        while (!isExit.getValue()) {
-//            usleep(100000);
-//            isPublishPointCloud.assign(true);
-////            printf("tick %d\n", i++);
-////            fflush(stdout);
-//        }
-//    };
-//    std::thread pointCloudClockThread(pointCloudClockAction);
-
-    while(!pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
+    while(isMainControllerRunning.getValue() && !pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
     {
         if(!gui->pause->Get() || pangolin::Pushed(*gui->step))
         {
@@ -279,24 +271,24 @@ void MainControllerRos::run()
 //                eFusion->processFrame(logReader->rgb, logReader->depth, logReader->timestamp, currentPose, weightMultiplier);
                 Eigen::Matrix4f cameraInvPoseMat = cameraPoseMat.inverse();
                 Eigen::Matrix4f eFusionCurPose = eFusion->getCurrPose();
-                for (int i = 0; i < 4; i++) {
-                    for (int j = 0; j < 4; j++) {
-                        printf("%9.6f ", cameraPoseMat(i, j));
-                    }
-                    printf("\n");
-                    for (int j = 0; j < 4; j++) {
-                        printf("%9.6f ", eFusionCurPose(i, j));
-                    }
-                    printf("\n");
+//                for (int i = 0; i < 4; i++) {
 //                    for (int j = 0; j < 4; j++) {
-//                        printf("%.6f ", cameraInvPoseMat(i,j));
+//                        printf("%9.6f ", cameraPoseMat(i, j));
 //                    }
 //                    printf("\n");
-                    printf("\n");
-                }
-                printf("-----------------------------------------\n");
-                printf("\n");
-                fflush(stdout);
+//                    for (int j = 0; j < 4; j++) {
+//                        printf("%9.6f ", eFusionCurPose(i, j));
+//                    }
+//                    printf("\n");
+////                    for (int j = 0; j < 4; j++) {
+////                        printf("%.6f ", cameraInvPoseMat(i,j));
+////                    }
+////                    printf("\n");
+//                    printf("\n");
+//                }
+//                printf("-----------------------------------------\n");
+//                printf("\n");
+//                fflush(stdout);
 
                 if(currentPose)
                 {
@@ -649,6 +641,4 @@ void MainControllerRos::run()
         }
         TOCK("GUI");
     }
-    isExit.assign(true);
-//    pointCloudClockThread.join();
 }
