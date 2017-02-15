@@ -641,4 +641,10 @@ void MainControllerRos::run()
         }
         TOCK("GUI");
     }
+    printf("Waiting for cloud publishing to finish...");
+    fflush(stdout);
+    while(false == isPublishPointCloud.getValue()) {
+        usleep(1000);
+    }
+    printf(" Done.\n");
 }

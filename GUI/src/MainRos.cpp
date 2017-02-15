@@ -24,24 +24,32 @@
 int main(int argc, char * argv[])
 {
 //    MainControllerRos mainController(argc, argv);
-    MainControllerRos * mainControllerPtr = NULL;
-//    auto quitAction = [&mainController]() {
-//        usleep(10000000);
+//    MainControllerRos * mainControllerPtr = NULL;
+//    mainControllerPtr = new MainControllerRos(argc, argv);
+////    auto quitAction = [&mainController, &mainControllerPtr]() {
+//    auto quitAction = [&mainControllerPtr]() {
+//        usleep(20000000);
 //        printf("Quit window.\n");
 //        fflush(stdout);
-//        mainController.isMainControllerRunning.assign(false);
+////        mainController.isMainControllerRunning.assign(false);
+//        mainControllerPtr->isMainControllerRunning.assign(false);
 //    };
 //    std::thread quitThread = std::thread(quitAction);
-//    mainController.launch();
+////    mainController.launch();
+//    mainControllerPtr->launch();
 //    quitThread.join();
+//    delete(mainControllerPtr);
 
     //  Prepare our context and socket
+    MainControllerRos * mainControllerPtr = NULL;
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
     socket.bind ("tcp://*:5557");
     auto newEfusionAction = [&mainControllerPtr, &argc, &argv] () {
         mainControllerPtr = new MainControllerRos(argc, argv);
         mainControllerPtr->launch();
+        delete(mainControllerPtr);
+        mainControllerPtr = NULL;
     };
     std::thread mainControllerThread;
     while (true) {
@@ -50,14 +58,14 @@ int main(int argc, char * argv[])
         //  Wait for next request from client
         socket.recv (&request);
         std::cout << "Received Hello" << std::endl;
-//        if (mainControllerPtr) {
-//            mainControllerPtr->isMainControllerRunning.assign(false);
-//            delete(mainControllerPtr);
+        if (mainControllerPtr) {
+            mainControllerPtr->isMainControllerRunning.assign(false);
+            mainControllerThread.join();
 //            mainControllerPtr = NULL;
-//            mainControllerThread.join();
-//        } else {
-//            mainControllerThread = std::move(std::thread(newEfusionAction));
-//        }
+        } else {
+            mainControllerThread = std::move(std::thread(newEfusionAction));
+//            mainControllerThread.detach();
+        }
 
         //  Do some 'work'
         sleep(1);
