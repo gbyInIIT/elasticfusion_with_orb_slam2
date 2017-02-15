@@ -58,21 +58,25 @@ int main(int argc, char * argv[])
         //  Wait for next request from client
         socket.recv (&request);
         std::cout << "Received Hello" << std::endl;
-        if (mainControllerPtr) {
-            mainControllerPtr->isMainControllerRunning.assign(false);
-            mainControllerThread.join();
-//            mainControllerPtr = NULL;
+        std::string requestStr = std::string(static_cast<char*>(request.data()), request.size());
+        if (requestStr == "on") {
+            if (mainControllerPtr) {
+                //do nothing
+            } else {
+                mainControllerThread = std::move(std::thread(newEfusionAction));
+            }
         } else {
-            mainControllerThread = std::move(std::thread(newEfusionAction));
-//            mainControllerThread.detach();
+            if (mainControllerPtr) {
+                mainControllerPtr->isMainControllerRunning.assign(false);
+                mainControllerThread.join();
+            } else {
+                // do nothing
+            }
         }
-
-        //  Do some 'work'
         sleep(1);
-
         //  Send reply back to client
-        zmq::message_t reply (5);
-        memcpy (reply.data (), "World", 5);
+        zmq::message_t reply (2);
+        memcpy (reply.data (), "OK", 2);
         socket.send (reply);
     }
     return 0;
