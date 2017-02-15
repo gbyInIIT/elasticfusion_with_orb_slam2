@@ -218,6 +218,7 @@ class GUI
             delete renderBuffer;
             delete colorFrameBuffer;
             delete colorTexture;
+            pangolin::DestroyWindow("Main");
         }
 
         void preCall()
