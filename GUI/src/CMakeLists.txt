@@ -16,6 +16,7 @@ include_directories(
         ${catkin_INCLUDE_DIRS}
 )
 
+find_package(ZeroMQ REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Pangolin 0.1 REQUIRED)
 find_package(CUDA REQUIRED)
@@ -24,7 +25,9 @@ find_package(OpenNI2 REQUIRED)
 set(EFUSION_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libefusion.so")
 set(EFUSION_INCLUDE_DIR "../../Core/src")
 message(STATUS "efustion lib: ${EFUSION_LIBRARY}")
+message(STATUS "ZeroMQ lib: ${ZeroMQ_LIBRARY}")
 
+include_directories(${ZeroMQ_INCLUDE_DIR})
 include_directories(${ZLIB_INCLUDE_DIR})
 include_directories(${EIGEN_INCLUDE_DIRS})
 include_directories(${Pangolin_INCLUDE_DIRS})
@@ -77,6 +80,7 @@ target_link_libraries(ElasticFusionSR300
         )
 
 target_link_libraries(ElasticFusionRos
+        ${ZeroMQ_LIBRARY}
         ${ZLIB_LIBRARY}
         ${Pangolin_LIBRARIES}
         ${CUDA_LIBRARIES}
