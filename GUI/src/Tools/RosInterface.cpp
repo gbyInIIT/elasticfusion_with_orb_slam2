@@ -148,7 +148,7 @@ RosInterface::RosInterface()
                 cameraPose.position = cameraPosePoint;
                 cameraPose.orientation = cameraPoseQuaternion;
                 geometry_msgs::PoseStamped cameraPoseStamped;
-                cameraPoseStamped.header.frame_id = "iiwa_base";
+                cameraPoseStamped.header.frame_id = "world";
                 cameraPoseStamped.header.stamp = imageRosTime;
                 cameraPoseStamped.header.seq = 0;
                 cameraPoseStamped.pose = cameraPose;
