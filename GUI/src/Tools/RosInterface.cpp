@@ -88,8 +88,8 @@ RosInterface::RosInterface()
     }
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     pSLAM = new ORB_SLAM2::System("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.txt",
-                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
-//                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Asus.yaml", ORB_SLAM2::System::RGBD,false);
+//                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
+                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Asus.yaml", ORB_SLAM2::System::RGBD, true);
     auto rosAction = [this]() {
         int argc = 0;
         ros::init(argc, NULL, "depth_rgb_elasticfusion_sub");
@@ -157,6 +157,9 @@ RosInterface::RosInterface()
 //            usleep(100);
             rate.sleep();
         }
+        printf("ROS exited.\n");
+        fflush(stdout);
+        pSLAM->Shutdown();
         ros::shutdown();
     };
     rosThread = std::move(std::thread(rosAction));
@@ -252,14 +255,26 @@ void RosInterface::depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImag
 RosInterface::~RosInterface()
 {
     if(initSuccessful) {
-        printf("RosInterface dead.");
+        printf("Destroying RosInterface...");
+        printf("Waiting for ROS node shutting down...\n");
+        fflush(stdout);
         isSystemRunning.assign(false);
         rosThread.join();
+        printf("Waiting for ROS node shutting down done.\n");
+        fflush(stdout);
+        printf("Deleting depth/rgb Buffers...\n");
+        fflush(stdout);
         for (int i = 0; i < numBuffers; i++) {
             free(depthBuffers[i].first);
             free(rgbBuffers[i].first);
         }
+        printf("Deleting depth/rgb buffers done.\n");
+        fflush(stdout);
+        printf("Deleting ORB SLAM2...\n");
+        fflush(stdout);
         delete pSLAM;
+        printf("Destroying RosInterface done.\n");
+        fflush(stdout);
     }
 }
 
