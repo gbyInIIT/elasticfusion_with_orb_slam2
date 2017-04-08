@@ -42,7 +42,7 @@ public:
         return initSuccessful;
     }
 
-    static const int numBuffers = 100;
+    static const int numBuffers = 500;
     ThreadMutexObject<int> latestAllFrameIndex;
     ros::Time rgbImageRosTimeBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> depthBuffers[numBuffers];

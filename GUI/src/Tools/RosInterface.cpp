@@ -159,6 +159,9 @@ RosInterface::RosInterface()
 //            usleep(100);
             rate.sleep();
         }
+        printf("ROS exited.\n");
+        fflush(stdout);
+        pSLAM->Shutdown();
         ros::shutdown();
     };
     rosThread = std::move(std::thread(rosAction));
@@ -254,14 +257,26 @@ void RosInterface::depthRgbMsgCallback(const sensor_msgs::ImageConstPtr& rgbImag
 RosInterface::~RosInterface()
 {
     if(initSuccessful) {
-        printf("RosInterface dead.");
+        printf("Destroying RosInterface...");
+        printf("Waiting for ROS node shutting down...\n");
+        fflush(stdout);
         isSystemRunning.assign(false);
         rosThread.join();
+        printf("Waiting for ROS node shutting down done.\n");
+        fflush(stdout);
+        printf("Deleting depth/rgb Buffers...\n");
+        fflush(stdout);
         for (int i = 0; i < numBuffers; i++) {
             free(depthBuffers[i].first);
             free(rgbBuffers[i].first);
         }
+        printf("Deleting depth/rgb buffers done.\n");
+        fflush(stdout);
+        printf("Deleting ORB SLAM2...\n");
+        fflush(stdout);
         delete pSLAM;
+        printf("Destroying RosInterface done.\n");
+        fflush(stdout);
     }
 }
 
