@@ -88,8 +88,9 @@ RosInterface::RosInterface()
     }
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     pSLAM = new ORB_SLAM2::System("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.txt",
-                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
+//                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
 //                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Asus.yaml", ORB_SLAM2::System::RGBD,false);
+                                  "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Arrfou.yaml", ORB_SLAM2::System::RGBD,false);
     auto rosAction = [this]() {
         int argc = 0;
         ros::init(argc, NULL, "depth_rgb_elasticfusion_sub");
