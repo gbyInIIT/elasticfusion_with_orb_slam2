@@ -52,8 +52,8 @@ MainControllerRos::MainControllerRos(int argc, char * argv[])
     }
 
     confidence = 2.0f;
-//    depth = 1.5*8.f;
-    depth = 3.5f;
+    depth = 1.5*8.f;
+//    depth = 3.5f;
     icp = 10.0f;
     icpErrThresh = 5e-05;
     covThresh = 1e-05;
