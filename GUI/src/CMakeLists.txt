@@ -46,8 +46,9 @@ include_directories(${ORB_SOURCE_DIR}/include)
 file(GLOB srcs *.cpp)
 file(GLOB tools_srcs Tools/*.cpp)
 
-set(CMAKE_CXX_FLAGS "-O3 -msse2 -msse3 -Wall -std=c++11")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -std=c++11")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -msse2 -msse3 -Wall -std=c++11")
+#set(CMAKE_CXX_FLAGS" ${CMAKE_CXX_FLAGS} -msse2 -msse3 -Wall -std=c++11")
+set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} -Wall -std=c++11")
 
 add_definitions(-Dlinux=1)
 
@@ -79,6 +80,7 @@ target_link_libraries(ElasticFusion
                       ${CUDA_LIBRARIES}
                       ${EFUSION_LIBRARY}
                       ${OPENNI2_LIBRARY}
+        realsense
 )
 
 target_link_libraries(ElasticFusionSR300
