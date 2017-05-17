@@ -29,12 +29,14 @@
 #include <tf/transform_broadcaster.h>
 //#include <turtlesim/Pose.h>
 
-RosInterface::RosInterface()
+//RosInterface::RosInterface(std::string argInDepthCameraYamlPath = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml"))
+RosInterface::RosInterface(std::string argInDepthCameraYamlPath)// = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml"))
  : width(-1),
    height(-1),
    fps(30),
    initSuccessful(true)
 {
+    depthCameraConfigYamlPath = argInDepthCameraYamlPath;
     latestAllFrameIndex.assign(-1);
     isCameraInitialized.assign(false);
     isSystemRunning.assign(true);
@@ -88,7 +90,8 @@ RosInterface::RosInterface()
     }
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     pSLAM = new ORB_SLAM2::System("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.txt",
-                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
+                                  depthCameraConfigYamlPath, ORB_SLAM2::System::RGBD,false);
+//                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
 //                                "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_R200.yaml", ORB_SLAM2::System::RGBD,false);
 //                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Asus.yaml", ORB_SLAM2::System::RGBD,false);
 //                                  "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Arrfou.yaml", ORB_SLAM2::System::RGBD,false);

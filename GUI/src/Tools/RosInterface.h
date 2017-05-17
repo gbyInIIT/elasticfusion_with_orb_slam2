@@ -34,7 +34,7 @@
 class RosInterface
 {
 public:
-    RosInterface();
+    RosInterface(std::string argInDepthCameraYamlPath = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml"));
     virtual ~RosInterface();
 
 
@@ -59,6 +59,7 @@ public:
     sensor_msgs::PointCloud2 pointCloudMsgBuffer[nPointCloudMsgBuffer];
     ThreadMutexObject<int> latestPointCloudIndex;
     ORB_SLAM2::System *pSLAM;
+    std::string depthCameraConfigYamlPath;
 
 private:
     std::thread rosThread;
