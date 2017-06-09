@@ -60,6 +60,11 @@ add_executable(ElasticFusionSR300
         Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReaderSR300.cpp Tools/SR300Interface.cpp
         )
 
+add_executable(ElasticFusionSR300_ORB
+        MainSR300_ORB.cpp MainControllerSR300_ORB.cpp
+        Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReaderSR300_ORB.cpp Tools/SR300_ORB_Interface.cpp
+        )
+
 add_executable(ElasticFusionRos
         MainRos.cpp MainControllerRos.cpp
         Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReaderRos.cpp Tools/RosInterface.cpp
@@ -89,6 +94,17 @@ target_link_libraries(ElasticFusionSR300
         ${CUDA_LIBRARIES}
         ${EFUSION_LIBRARY}
         realsense
+        )
+
+target_link_libraries(ElasticFusionSR300_ORB
+        ${ZLIB_LIBRARY}
+        ${Pangolin_LIBRARIES}
+        ${CUDA_LIBRARIES}
+        ${EFUSION_LIBRARY}
+        realsense
+        ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
+        ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+        ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
         )
 
 target_link_libraries(ElasticFusionRos

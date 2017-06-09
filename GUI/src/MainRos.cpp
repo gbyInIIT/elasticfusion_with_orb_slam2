@@ -24,60 +24,60 @@
 int main(int argc, char * argv[])
 {
 //    MainControllerRos mainController(argc, argv);
-//    MainControllerRos * mainControllerPtr = NULL;
-//    mainControllerPtr = new MainControllerRos(argc, argv);
-////    auto quitAction = [&mainController, &mainControllerPtr]() {
+    MainControllerRos * mainControllerPtr = NULL;
+    mainControllerPtr = new MainControllerRos(argc, argv);
+//    auto quitAction = [&mainController, &mainControllerPtr]() {
 //    auto quitAction = [&mainControllerPtr]() {
 //        usleep(20000000);
 //        printf("Quit window.\n");
 //        fflush(stdout);
-////        mainController.isMainControllerRunning.assign(false);
+//        mainController.isMainControllerRunning.assign(false);
 //        mainControllerPtr->isMainControllerRunning.assign(false);
 //    };
 //    std::thread quitThread = std::thread(quitAction);
-////    mainController.launch();
-//    mainControllerPtr->launch();
+//    mainController.launch();
+    mainControllerPtr->launch();
 //    quitThread.join();
-//    delete(mainControllerPtr);
+    delete(mainControllerPtr);
 
     //  Prepare our context and socket
-    MainControllerRos * mainControllerPtr = NULL;
-    zmq::context_t context (1);
-    zmq::socket_t socket (context, ZMQ_REP);
-    socket.bind ("tcp://*:5557");
-    auto newEfusionAction = [&mainControllerPtr, &argc, &argv] () {
-        mainControllerPtr = new MainControllerRos(argc, argv);
-        mainControllerPtr->launch();
-        delete(mainControllerPtr);
-        mainControllerPtr = NULL;
-    };
-    std::thread mainControllerThread;
-    while (true) {
-        zmq::message_t request;
-
-        //  Wait for next request from client
-        socket.recv (&request);
-        std::cout << "Received Hello" << std::endl;
-        std::string requestStr = std::string(static_cast<char*>(request.data()), request.size());
-        if (requestStr == "on") {
-            if (mainControllerPtr) {
-                //do nothing
-            } else {
-                mainControllerThread = std::move(std::thread(newEfusionAction));
-            }
-        } else {
-            if (mainControllerPtr) {
-                mainControllerPtr->isMainControllerRunning.assign(false);
-                mainControllerThread.join();
-            } else {
-                // do nothing
-            }
-        }
-        sleep(1);
-        //  Send reply back to client
-        zmq::message_t reply (2);
-        memcpy (reply.data (), "OK", 2);
-        socket.send (reply);
-    }
+//    MainControllerRos * mainControllerPtr = NULL;
+//    zmq::context_t context (1);
+//    zmq::socket_t socket (context, ZMQ_REP);
+//    socket.bind ("tcp://*:5557");
+//    auto newEfusionAction = [&mainControllerPtr, &argc, &argv] () {
+//        mainControllerPtr = new MainControllerRos(argc, argv);
+//        mainControllerPtr->launch();
+//        delete(mainControllerPtr);
+//        mainControllerPtr = NULL;
+//    };
+//    std::thread mainControllerThread;
+//    while (true) {
+//        zmq::message_t request;
+//
+//        //  Wait for next request from client
+//        socket.recv (&request);
+//        std::cout << "Received Hello" << std::endl;
+//        std::string requestStr = std::string(static_cast<char*>(request.data()), request.size());
+//        if (requestStr == "on") {
+//            if (mainControllerPtr) {
+//                //do nothing
+//            } else {
+//                mainControllerThread = std::move(std::thread(newEfusionAction));
+//            }
+//        } else {
+//            if (mainControllerPtr) {
+//                mainControllerPtr->isMainControllerRunning.assign(false);
+//                mainControllerThread.join();
+//            } else {
+//                // do nothing
+//            }
+//        }
+//        sleep(1);
+//        //  Send reply back to client
+//        zmq::message_t reply (2);
+//        memcpy (reply.data (), "OK", 2);
+//        socket.send (reply);
+//    }
     return 0;
 }
