@@ -1,22 +1,5 @@
-/*
- * This file is part of ElasticFusion.
- *
- * Copyright (C) 2015 Imperial College London
- * 
- * The use of the code within this file and all code within files that 
- * make up the software that is ElasticFusion is permitted for 
- * non-commercial purposes only.  The full terms and conditions that 
- * apply to the code within this file are detailed within the LICENSE.txt 
- * file and at <http://www.imperial.ac.uk/dyson-robotics-lab/downloads/elastic-fusion/elastic-fusion-license/> 
- * unless explicitly stated.  By downloading this file you agree to 
- * comply with these terms.
- *
- * If you wish to use any of this code for commercial purposes then 
- * please email researchcontracts.engineering@imperial.ac.uk.
- *
- */
- 
 #include "MainControllerSR300_ORB.h"
+#define my_assert(x) if (x) {} else {cerr<<endl<<std::string("assertion failed @line:") + std::to_string(__LINE__)+" in file:"<<__FILE__<<endl; throw -1;}
 
 MainControllerSR300_ORB::MainControllerSR300_ORB(int argc, char * argv[])
  : good(true),
@@ -34,6 +17,16 @@ MainControllerSR300_ORB::MainControllerSR300_ORB(int argc, char * argv[])
     std::string calibrationFile;
     Parse::get().arg(argc, argv, "-cal", calibrationFile);
 
+    std::string sr300YamlFile;
+    Parse::get().arg(argc, argv, "-sr300_yaml", sr300YamlFile);
+    cerr<<"-sr300_yaml <path_to_sr300_yaml> must be specified."<<endl;
+    my_assert(sr300YamlFile.length() > 0);
+
+    std::string orbVocBinaryFile;
+    Parse::get().arg(argc, argv, "-orb_voc_bin", orbVocBinaryFile);
+    cerr<<"-orb_voc_bin <path_to_orb_voc_bin> must be specified."<<endl;
+    my_assert(orbVocBinaryFile.length() > 0);
+
     Resolution::getInstance(640, 480);
 
     if(calibrationFile.length())
@@ -42,9 +35,7 @@ MainControllerSR300_ORB::MainControllerSR300_ORB(int argc, char * argv[])
     }
     else
     {
-//        Intrinsics::getInstance(528, 528, 320, 240);
-//        Intrinsics::getInstance(476, 476, 316, 246);
-        Intrinsics::getInstance(615.896851, 615.896912, 313.278687, 239.752930);
+//        Intrinsics::getInstance(615.896851, 615.896912, 313.278687, 239.752930);
     }
 
     Parse::get().arg(argc, argv, "-l", logFile);
@@ -55,11 +46,14 @@ MainControllerSR300_ORB::MainControllerSR300_ORB(int argc, char * argv[])
     }
     else
     {
-//        logReader = new LiveLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
-        logReader = new LiveLogReaderSR300_ORB(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
-
-//        good = ((LiveLogReader *)logReader)->asus->ok();
-        good = ((LiveLogReaderSR300_ORB*)logReader)->asus->ok();
+        logReader = new LiveLogReaderSR300_ORB(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1,
+                                               sr300YamlFile, orbVocBinaryFile);
+        LiveLogReaderSR300_ORB * liveLogReaderSR300_ORB = (LiveLogReaderSR300_ORB*)logReader;
+        good = liveLogReaderSR300_ORB->realsense->ok();
+        Intrinsics::getInstance(liveLogReaderSR300_ORB->realsense->fx,
+                                liveLogReaderSR300_ORB->realsense->fy,
+                                liveLogReaderSR300_ORB->realsense->cx,
+                                liveLogReaderSR300_ORB->realsense->cy);
     }
 
     if(Parse::get().arg(argc, argv, "-p", poseFile) > 0)
@@ -72,7 +66,6 @@ MainControllerSR300_ORB::MainControllerSR300_ORB(int argc, char * argv[])
     icp = 10.0f;
     icpErrThresh = 5e-05;
     covThresh = 1e-05;
-//    photoThresh = 115;
     photoThresh = 50;
     fernThresh = 0.3095f;
 //    fernThresh = 0.2f;
@@ -277,8 +270,8 @@ void MainControllerSR300_ORB::run()
                                           sr300_orb_LogReader->timestamp, &sr300_orb_LogReader->currentPose, weightMultiplier);
 
                 } else {
-                    printf("Tracking lost.\n");
-                    fflush(stdout);
+//                    printf("Tracking lost.\n");
+//                    fflush(stdout);
                 }
 
                 if(currentPose)

@@ -1,21 +1,3 @@
-/*
- * This file is part of ElasticFusion.
- *
- * Copyright (C) 2015 Imperial College London
- * 
- * The use of the code within this file and all code within files that 
- * make up the software that is ElasticFusion is permitted for 
- * non-commercial purposes only.  The full terms and conditions that 
- * apply to the code within this file are detailed within the LICENSE.txt 
- * file and at <http://www.imperial.ac.uk/dyson-robotics-lab/downloads/elastic-fusion/elastic-fusion-license/> 
- * unless explicitly stated.  By downloading this file you agree to 
- * comply with these terms.
- *
- * If you wish to use any of this code for commercial purposes then 
- * please email researchcontracts.engineering@imperial.ac.uk.
- *
- */
-
 #ifndef INTERFACESR300_ORB_H_
 #define INTERFACESR300_ORB_H_
 
@@ -32,18 +14,14 @@ class SR300_ORB_Interface
 {
 public:
     std::string depthCameraConfigYamlPath;
+    std::string orbVocBinPath;
     ORB_SLAM2::System *pSLAM;
-    SR300_ORB_Interface(int inWidth = 640, int inHeight = 480, int fps = 30, std::string argInDepthCameraYamlPath = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml"));
+    SR300_ORB_Interface(int inWidth = 640, int inHeight = 480, int fps = 30,
+                        std::string argInDepthCameraYamlPath = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml"),
+                        std::string argInOrbVocBinPath = std::string("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.bin"));
     virtual ~SR300_ORB_Interface();
 
     const int width, height, fps;
-
-    void printModes();
-    bool findMode(int x, int y, int fps);
-    void setAutoExposure(bool value);
-    void setAutoWhiteBalance(bool value);
-    bool getAutoExposure();
-    bool getAutoWhiteBalance();
 
     bool ok()
     {
@@ -57,27 +35,19 @@ public:
     }
 
     static const int numBuffers = 1000;
-    ThreadMutexObject<int> latestDepthIndex;
     ThreadMutexObject<int> latestAllFrameIndex;
-    std::pair<std::pair<uint8_t *, uint8_t *>, int64_t> frameBuffers[numBuffers];
-//    std::pair<std::tuple<uint8_t *, uint8_t *, uint8_t *, uint8_t *>, int64_t> frameBuffersEx[numBuffers]; // depth/color/depth_aligned_to_color/color_aligned_to_depth
-    std::pair<uint8_t *, int64_t> depthBuffers[numBuffers];
+    ThreadMutexObject<bool> shouldStop;
     std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> depthAlignedToRgbBuffers[numBuffers];
-    std::pair<uint8_t *, int64_t> rgbAlginedToDepthBuffers[numBuffers];
     std::pair<Eigen::Matrix4f, int64_t> cameraToObjectTransMatBuffers[numBuffers];
+    float fx, fy, cx, cy;
 
 private:
     rs::context ctx;
     rs::device * dev;
-    std::thread depth_aligned_to_color_daemon_thread;
     std::thread allFrameDaemonThread;
 
     int64_t lastAllFrameTime;
-    int64_t lastRgbTime;
-    int64_t lastDepthTime;
-
-    ThreadMutexObject<int> latestRgbIndex;
 
     bool initSuccessful;
     std::string errorText;
