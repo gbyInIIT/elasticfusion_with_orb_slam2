@@ -102,6 +102,7 @@ target_link_libraries(ElasticFusionSR300_ORB
         ${CUDA_LIBRARIES}
         ${EFUSION_LIBRARY}
         realsense
+        ${catkin_LIBRARIES}
         ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
         ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
         ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
@@ -145,3 +146,4 @@ target_link_libraries(gen_image_and_camera_pose
 set(CMAKE_VERBOSE_MAKEFILE on)
 add_dependencies(ElasticFusion efusion)
 add_dependencies(ElasticFusionRos efusion)
+add_dependencies(ElasticFusionSR300_ORB efusion)

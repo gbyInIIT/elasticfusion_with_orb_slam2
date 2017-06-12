@@ -33,7 +33,7 @@ class SR300_ORB_Interface
 public:
     std::string depthCameraConfigYamlPath;
     ORB_SLAM2::System *pSLAM;
-    SR300_ORB_Interface(int inWidth = 640, int inHeight = 480, int fps = 30, std::string argInDepthCameraYamlPath = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml");
+    SR300_ORB_Interface(int inWidth = 640, int inHeight = 480, int fps = 30, std::string argInDepthCameraYamlPath = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml"));
     virtual ~SR300_ORB_Interface();
 
     const int width, height, fps;
@@ -52,11 +52,11 @@ public:
 
     std::string error()
     {
-        errorText.erase(std::remove_if(errorText.begin(), errorText.end(), &SR300Interface::isTab), errorText.end());
+        errorText.erase(std::remove_if(errorText.begin(), errorText.end(), &SR300_ORB_Interface::isTab), errorText.end());
         return errorText;
     }
 
-    static const int numBuffers = 10;
+    static const int numBuffers = 1000;
     ThreadMutexObject<int> latestDepthIndex;
     ThreadMutexObject<int> latestAllFrameIndex;
     std::pair<std::pair<uint8_t *, uint8_t *>, int64_t> frameBuffers[numBuffers];

@@ -19,14 +19,15 @@
 #include "SR300_ORB_Interface.h"
 #include <unistd.h>
 
-SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps, std::string argInDepthCameraYamlPath = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml")
+SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps, std::string argInDepthCameraYamlPath)
  : width(inWidth),
    height(inHeight),
    fps(fps),
-   initSuccessful(true), depthCameraConfigYamlPath(argInDepthCameraYamlPath)
+   initSuccessful(true),
+   depthCameraConfigYamlPath(argInDepthCameraYamlPath)
 {
-    pSLAM = new ORB_SLAM2::System("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.txt",
-                                  depthCameraConfigYamlPath, ORB_SLAM2::System::RGBD,false);
+    pSLAM = new ORB_SLAM2::System("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.bin",
+                                  depthCameraConfigYamlPath, ORB_SLAM2::System::RGBD, false);
 //                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
 //                                "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_R200.yaml", ORB_SLAM2::System::RGBD,false);
 //                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Asus.yaml", ORB_SLAM2::System::RGBD,false);
@@ -70,11 +71,14 @@ SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps, std
         uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
         frameBuffers[i] = std::pair<std::pair<uint8_t *, uint8_t *>, int64_t>(std::pair<uint8_t *, uint8_t *>(newDepth, newImage), 0);
     }
+    dev->start();
+//    usleep(3000000);
     auto all_stream_feeder = [this]() {
         while(!dev->is_streaming()) {
             usleep(1000);
         }
-        int nPixel = dev->get_stream_width(rs::stream::color_aligned_to_depth) * dev->get_stream_height(rs::stream::color_aligned_to_depth);
+//        int nPixel = dev->get_stream_width(rs::stream::color_aligned_to_depth) * dev->get_stream_height(rs::stream::color_aligned_to_depth);
+        int nPixel = dev->get_stream_width(rs::stream::color) * dev->get_stream_height(rs::stream::color);
         assert(dev->get_stream_width(rs::stream::depth_aligned_to_color)*dev->get_stream_height(rs::stream::depth_aligned_to_color) == nPixel);
         assert(dev->get_stream_width(rs::stream::depth)*dev->get_stream_height(rs::stream::depth) == nPixel);
         assert(dev->get_stream_width(rs::stream::color)*dev->get_stream_height(rs::stream::color) == nPixel);
@@ -82,7 +86,7 @@ SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps, std
             dev->wait_for_frames();
             std::chrono::system_clock::duration epoch_dur = std::chrono::system_clock::now().time_since_epoch();
             lastAllFrameTime =  epoch_dur / std::chrono::milliseconds(1);
-            int bufferIndex = (latestAllFrameIndex.getValue() + 1) % numBuffers;
+            const int bufferIndex = (latestAllFrameIndex.getValue() + 1) % numBuffers;
             memcpy(depthBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::depth), nPixel * 2);
             memcpy(rgbBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::color), nPixel * 3);
             memcpy(depthAlignedToRgbBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::depth_aligned_to_color), nPixel * 2);
@@ -91,32 +95,56 @@ SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps, std
             rgbBuffers[bufferIndex].second = lastAllFrameTime;
             depthAlignedToRgbBuffers[bufferIndex].second = lastAllFrameTime;
             rgbAlginedToDepthBuffers[bufferIndex].second = lastAllFrameTime;
-            cv::Mat cvRgbImageMat = cv::Mat(height, width, CV_8UC3, rgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
-            cv::Mat cvDepthImageMat = cv::Mat(height, width, CV_8UC3, rgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
-            cv::Mat m = pSLAM->TrackRGBD(cvRgbImageMat, cvDepthImageMat, lastAllFrameTime/1000.);
+            cv::Mat cvRgbImageMat = cv::Mat(cv::Size(width, height), CV_8UC3, rgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
+//            cv::Mat cvBgrImageMat;
+//            cv::cvtColor(cvRgbImageMat, cvBgrImageMat, CV_RGB2BGR);
+            cv::Mat cvDepthImageMat = cv::Mat(cv::Size(width, height), CV_16UC1, depthAlignedToRgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
+//            cv::imshow("rgb", cvRgbImageMat);
+//            cv::imshow("depth", cvDepthImageMat);
+//            cv::waitKey(10);
+//            cv::Mat cvDepthFloatImageMat;
+//            cvDepthImageMat.convertTo(cvDepthFloatImageMat, CV_32FC1);
+//            if (processedFrameIndex > 10) {
+            cv::Mat m = pSLAM->TrackRGBD(cvRgbImageMat, cvDepthImageMat, double(lastAllFrameTime)/1000.0);
+//            cv::Mat cvRgbImageMat = cv::Mat(height, width, CV_8UC3, rgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
+//            cv::Mat cvBgrImageMat;
+//            cv::cvtColor(cvRgbImageMat, cvBgrImageMat, CV_RGB2BGR);
+//            cv::Mat cvDepthImageMat = cv::Mat(height, width, CV_16UC1, depthAlignedToRgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
+//            cv::imshow("rgb", cvBgrImageMat);
+//            cv::imshow("depth", cvDepthImageMat);
+//            cv::waitKey(10);
+//            cv::Mat m = pSLAM->TrackRGBD(cvBgrImageMat, cvDepthImageMat, lastAllFrameTime/1000.);
+//            cout<<m<<endl;
             Eigen::Matrix4f transMat;
-            transMat << m.at<float>(0, 0), m.at<float>(0, 1), m.at<float>(0, 2), m.at<float>(0, 3),
-                    m.at<float>(1, 0), m.at<float>(1, 1), m.at<float>(1, 2), m.at<float>(1, 3),
-                    m.at<float>(2, 0), m.at<float>(2, 1), m.at<float>(2, 2), m.at<float>(2, 3),
-                    m.at<float>(3, 0), m.at<float>(3, 1), m.at<float>(3, 2), m.at<float>(3, 3);
-//    Eigen::Matrix4f invTransMat = transMat.inverse();
-//    for (int i = 0; i < 4; i++) {
-//        for (int j = 0; j < 4; j++) {
-//            printf("%f ", invTransMat(i, j));
-//        }
-//        printf("\n");
-//    }
-//    printf("\n");
-//    fflush(stdout);
-            cameraToObjectTransMatBuffers[bufferIndex].first = transMat.inverse();
-//    cameraToObjectTransMatBuffers[bufferIndex].first = transMat;
-            cameraToObjectTransMatBuffers[bufferIndex].second = lastAllFrameTime;
+            if (0 == m.cols) {
+                transMat = Eigen::Matrix4f::Zero();
+                cameraToObjectTransMatBuffers[bufferIndex].first = transMat;
+                cameraToObjectTransMatBuffers[bufferIndex].second = lastAllFrameTime;
+            } else {
+                transMat << m.at<float>(0, 0), m.at<float>(0, 1), m.at<float>(0, 2), m.at<float>(0, 3),
+                        m.at<float>(1, 0), m.at<float>(1, 1), m.at<float>(1, 2), m.at<float>(1, 3),
+                        m.at<float>(2, 0), m.at<float>(2, 1), m.at<float>(2, 2), m.at<float>(2, 3),
+                        m.at<float>(3, 0), m.at<float>(3, 1), m.at<float>(3, 2), m.at<float>(3, 3);
+                cameraToObjectTransMatBuffers[bufferIndex].first = transMat.inverse();
+                cameraToObjectTransMatBuffers[bufferIndex].second = lastAllFrameTime;
+            }
+//            Eigen::Matrix4f invTransMat = transMat.inverse();
+//            for (int i = 0; i < 4; i++) {
+//                for (int j = 0; j < 4; j++) {
+//                    printf("%f ", invTransMat(i, j));
+//                }
+//                printf("\n");
+//            }
+//            printf("\n");
+//            fflush(stdout);
             latestAllFrameIndex++;
-            usleep(10000);
+            usleep(1000);
         }
     };
     allFrameDaemonThread = std::move(std::thread(all_stream_feeder));
-    dev->start();
+//    while(true) {
+//        usleep(1000);
+//    }
 }
 
 SR300_ORB_Interface::~SR300_ORB_Interface()

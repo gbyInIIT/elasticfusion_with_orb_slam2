@@ -272,9 +272,14 @@ void MainControllerSR300_ORB::run()
                 }
 
                 LiveLogReaderSR300_ORB * sr300_orb_LogReader = (LiveLogReaderSR300_ORB*) logReader;
-//                eFusion->processFrame(rgb, depth, timestamp, &cameraPoseMat, weightMultiplier);
-                eFusion->processFrame(sr300_orb_LogReader->rgb, sr300_orb_LogReader->depth,
-                                      sr300_orb_LogReader->timestamp, sr300_orb_LogReader->currentPose, weightMultiplier);
+                if (sr300_orb_LogReader->currentPose(3, 3) == 1.) {
+                    eFusion->processFrame(sr300_orb_LogReader->rgb, sr300_orb_LogReader->depth,
+                                          sr300_orb_LogReader->timestamp, &sr300_orb_LogReader->currentPose, weightMultiplier);
+
+                } else {
+                    printf("Tracking lost.\n");
+                    fflush(stdout);
+                }
 
                 if(currentPose)
                 {

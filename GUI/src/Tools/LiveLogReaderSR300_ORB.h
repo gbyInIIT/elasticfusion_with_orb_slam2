@@ -67,7 +67,7 @@ class LiveLogReaderSR300_ORB : public LogReader
         void setAuto(bool value);
 
 		SR300_ORB_Interface * asus;
-        Eigen::Matrix4f * currentPose;
+        Eigen::Matrix4f currentPose;
 
 	private:
 		int64_t lastFrameTime;
