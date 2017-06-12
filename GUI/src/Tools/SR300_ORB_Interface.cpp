@@ -1,38 +1,19 @@
-/*
- * This file is part of ElasticFusion.
- *
- * Copyright (C) 2015 Imperial College London
- * 
- * The use of the code within this file and all code within files that 
- * make up the software that is ElasticFusion is permitted for 
- * non-commercial purposes only.  The full terms and conditions that 
- * apply to the code within this file are detailed within the LICENSE.txt 
- * file and at <http://www.imperial.ac.uk/dyson-robotics-lab/downloads/elastic-fusion/elastic-fusion-license/> 
- * unless explicitly stated.  By downloading this file you agree to 
- * comply with these terms.
- *
- * If you wish to use any of this code for commercial purposes then 
- * please email researchcontracts.engineering@imperial.ac.uk.
- *
- */
-
 #include "SR300_ORB_Interface.h"
 #include <unistd.h>
+#define my_assert(x) if (x) {} else {cerr<<endl<<std::string("assertion failed @line:") + std::to_string(__LINE__)+" in file:"<<__FILE__<<endl; throw -1;}
 
-SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps, std::string argInDepthCameraYamlPath)
+SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps,
+                                         std::string argInDepthCameraYamlPath,
+                                         std::string argInOrbVocBinPath)
  : width(inWidth),
    height(inHeight),
    fps(fps),
    initSuccessful(true),
-   depthCameraConfigYamlPath(argInDepthCameraYamlPath)
+   shouldStop(false),
+   depthCameraConfigYamlPath(argInDepthCameraYamlPath),
+   orbVocBinPath(argInOrbVocBinPath)
 {
-    pSLAM = new ORB_SLAM2::System("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.bin",
-                                  depthCameraConfigYamlPath, ORB_SLAM2::System::RGBD, false);
-//                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
-//                                "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_R200.yaml", ORB_SLAM2::System::RGBD,false);
-//                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Asus.yaml", ORB_SLAM2::System::RGBD,false);
-//                                  "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Arrfou.yaml", ORB_SLAM2::System::RGBD,false);
-    // Create a context object. This object owns the handles to all connected realsense devices.
+    pSLAM = new ORB_SLAM2::System(orbVocBinPath, depthCameraConfigYamlPath, ORB_SLAM2::System::RGBD, false);
     printf("There are %d connected RealSense devices.\n", ctx.get_device_count());
     if(ctx.get_device_count() == 0) {
         fprintf(stderr, "No device found!");
@@ -47,74 +28,69 @@ SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps, std
     dev->enable_stream(rs::stream::depth, inWidth, inHeight, rs::format::z16, fps);
     dev->enable_stream(rs::stream::color, inWidth, inHeight, rs::format::rgb8, fps);
     dev->enable_stream(rs::stream::infrared, inWidth, inHeight, rs::format::y8, fps);
-    try { dev->enable_stream(rs::stream::infrared2, inWidth, inHeight, rs::format::y8, fps); }
-    catch(...) { printf("Device does not provide infrared2 stream.\n"); }
     initSuccessful = true;
     printf("depth scale: %f\n", dev->get_depth_scale());
-    const rs::intrinsics depth_intrin = dev->get_stream_intrinsics(rs::stream::depth);
+    const float depth_scale = dev->get_depth_scale();
+    std::cout << "Depth factor of stream:" << depth_scale <<std::endl;
     const rs::intrinsics color_intrin = dev->get_stream_intrinsics(rs::stream::color);
-    latestDepthIndex.assign(-1);
-    latestRgbIndex.assign(-1);
+    std::cout << "Intrinsic parameter of stream:" << rs::stream::color<<std::endl;
+    std::cout << "Capturing " << rs::stream ::color << " at " << color_intrin.width << " x " << color_intrin.height;
+    std::cout << std::setprecision(1) << std::fixed << ", fov = " << color_intrin.hfov() << " x " << color_intrin.vfov() << ", distortion = " << color_intrin.model() << std::endl;
+    std::cout << std::setprecision(6);
+    fx = color_intrin.fx;
+    fy = color_intrin.fy;
+    cx = color_intrin.ppx;
+    cy = color_intrin.ppy;
+    cv::FileStorage fSettings(depthCameraConfigYamlPath, cv::FileStorage::READ);
+    float yaml_fx = fSettings["Camera.fx"];
+    float yaml_fy = fSettings["Camera.fy"];
+    float yaml_cx = fSettings["Camera.cx"];
+    float yaml_cy = fSettings["Camera.cy"];
+    const float th = 1e-6;
+    my_assert(fabs(fx - yaml_fx) < th);
+    my_assert(fabs(fy - yaml_fy) < th);
+    my_assert(fabs(cx - yaml_cx) < th);
+    my_assert(fabs(cy - yaml_cy) < th);
+
+    std::cout << "fx:" << color_intrin.fx << std::endl;
+    std::cout << "fy:" << color_intrin.fy << std::endl;
+    std::cout << "ppx:" << color_intrin.ppx <<std::endl;
+    std::cout << "ppy:" << color_intrin.ppy << std::endl;
+
+    if (color_intrin.model() == rs::distortion::modified_brown_conrady) {
+        std::cout << "distortion coefficients: ";
+        std::cout << color_intrin.coeffs[0]<< ' ' << color_intrin.coeffs[1]<< ' '  << color_intrin.coeffs[2]<< ' '  << color_intrin.coeffs[3]<< ' '  << color_intrin.coeffs[4] << std::endl;
+    }
+    std::cout << std::endl;
     latestAllFrameIndex.assign(-1);
     for(int i = 0; i < numBuffers; i++) {
-        uint8_t * newDepthImage = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
         uint8_t * newRgbImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
         uint8_t * newDepthAlignedToRgbImage = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
-        uint8_t * newRgbAlignedToDepthImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
-        depthBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthImage, 0);
         rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbImage, 0);
         depthAlignedToRgbBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthAlignedToRgbImage, 0);
-        rgbAlginedToDepthBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbAlignedToDepthImage, 0);
     }
-    for(int i = 0; i < numBuffers; i++) {
-        uint8_t * newDepth = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
-        uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
-        frameBuffers[i] = std::pair<std::pair<uint8_t *, uint8_t *>, int64_t>(std::pair<uint8_t *, uint8_t *>(newDepth, newImage), 0);
-    }
+    double whiteBalance = 3800;//devPtr->get_option(rs::option::color_white_balance);
+    dev->set_option(rs::option::color_white_balance, whiteBalance);
+    dev->set_option(rs::option::color_enable_auto_exposure, 1);
     dev->start();
-//    usleep(3000000);
     auto all_stream_feeder = [this]() {
         while(!dev->is_streaming()) {
             usleep(1000);
         }
-//        int nPixel = dev->get_stream_width(rs::stream::color_aligned_to_depth) * dev->get_stream_height(rs::stream::color_aligned_to_depth);
-        int nPixel = dev->get_stream_width(rs::stream::color) * dev->get_stream_height(rs::stream::color);
-        assert(dev->get_stream_width(rs::stream::depth_aligned_to_color)*dev->get_stream_height(rs::stream::depth_aligned_to_color) == nPixel);
-        assert(dev->get_stream_width(rs::stream::depth)*dev->get_stream_height(rs::stream::depth) == nPixel);
-        assert(dev->get_stream_width(rs::stream::color)*dev->get_stream_height(rs::stream::color) == nPixel);
-        while(true) {
+        const int nPixel = dev->get_stream_width(rs::stream::color) * dev->get_stream_height(rs::stream::color);
+        my_assert(dev->get_stream_width(rs::stream::depth_aligned_to_color)*dev->get_stream_height(rs::stream::depth_aligned_to_color) == nPixel);
+        while(!shouldStop.getValue()) {
             dev->wait_for_frames();
             std::chrono::system_clock::duration epoch_dur = std::chrono::system_clock::now().time_since_epoch();
             lastAllFrameTime =  epoch_dur / std::chrono::milliseconds(1);
             const int bufferIndex = (latestAllFrameIndex.getValue() + 1) % numBuffers;
-            memcpy(depthBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::depth), nPixel * 2);
             memcpy(rgbBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::color), nPixel * 3);
             memcpy(depthAlignedToRgbBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::depth_aligned_to_color), nPixel * 2);
-            memcpy(rgbAlginedToDepthBuffers[bufferIndex].first, dev->get_frame_data(rs::stream::color_aligned_to_depth), nPixel * 3);
-            depthBuffers[bufferIndex].second = lastAllFrameTime;
             rgbBuffers[bufferIndex].second = lastAllFrameTime;
             depthAlignedToRgbBuffers[bufferIndex].second = lastAllFrameTime;
-            rgbAlginedToDepthBuffers[bufferIndex].second = lastAllFrameTime;
             cv::Mat cvRgbImageMat = cv::Mat(cv::Size(width, height), CV_8UC3, rgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
-//            cv::Mat cvBgrImageMat;
-//            cv::cvtColor(cvRgbImageMat, cvBgrImageMat, CV_RGB2BGR);
             cv::Mat cvDepthImageMat = cv::Mat(cv::Size(width, height), CV_16UC1, depthAlignedToRgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
-//            cv::imshow("rgb", cvRgbImageMat);
-//            cv::imshow("depth", cvDepthImageMat);
-//            cv::waitKey(10);
-//            cv::Mat cvDepthFloatImageMat;
-//            cvDepthImageMat.convertTo(cvDepthFloatImageMat, CV_32FC1);
-//            if (processedFrameIndex > 10) {
             cv::Mat m = pSLAM->TrackRGBD(cvRgbImageMat, cvDepthImageMat, double(lastAllFrameTime)/1000.0);
-//            cv::Mat cvRgbImageMat = cv::Mat(height, width, CV_8UC3, rgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
-//            cv::Mat cvBgrImageMat;
-//            cv::cvtColor(cvRgbImageMat, cvBgrImageMat, CV_RGB2BGR);
-//            cv::Mat cvDepthImageMat = cv::Mat(height, width, CV_16UC1, depthAlignedToRgbBuffers[bufferIndex].first, cv::Mat::AUTO_STEP);
-//            cv::imshow("rgb", cvBgrImageMat);
-//            cv::imshow("depth", cvDepthImageMat);
-//            cv::waitKey(10);
-//            cv::Mat m = pSLAM->TrackRGBD(cvBgrImageMat, cvDepthImageMat, lastAllFrameTime/1000.);
-//            cout<<m<<endl;
             Eigen::Matrix4f transMat;
             if (0 == m.cols) {
                 transMat = Eigen::Matrix4f::Zero();
@@ -128,119 +104,28 @@ SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps, std
                 cameraToObjectTransMatBuffers[bufferIndex].first = transMat.inverse();
                 cameraToObjectTransMatBuffers[bufferIndex].second = lastAllFrameTime;
             }
-//            Eigen::Matrix4f invTransMat = transMat.inverse();
-//            for (int i = 0; i < 4; i++) {
-//                for (int j = 0; j < 4; j++) {
-//                    printf("%f ", invTransMat(i, j));
-//                }
-//                printf("\n");
-//            }
-//            printf("\n");
-//            fflush(stdout);
             latestAllFrameIndex++;
             usleep(1000);
         }
     };
     allFrameDaemonThread = std::move(std::thread(all_stream_feeder));
-//    while(true) {
-//        usleep(1000);
-//    }
 }
 
 SR300_ORB_Interface::~SR300_ORB_Interface()
 {
     if(initSuccessful)
     {
-        printf("SR300_ORB_Interface dead.");
+        shouldStop.assign(true);
+        allFrameDaemonThread.join();
         dev->stop();
         dev->disable_stream(rs::stream::depth);
         dev->disable_stream(rs::stream::color);
         dev->disable_stream(rs::stream::infrared);
-        try { dev->disable_stream(rs::stream::infrared2);}
-        catch(...) { printf("Device does not provide infrared2 stream.\n"); }
         for(int i = 0; i < numBuffers; i++) {
             free(rgbBuffers[i].first);
-        }
-        for(int i = 0; i < numBuffers; i++) {
-            free(frameBuffers[i].first.first);
-            free(frameBuffers[i].first.second);
+            free(depthAlignedToRgbBuffers[i].first);
         }
         delete pSLAM;
     }
 }
 
-bool SR300_ORB_Interface::findMode(int x, int y, int fps)
-{
-    return true;
-}
-
-void SR300_ORB_Interface::printModes()
-{
-//    const openni::Array<openni::VideoMode> & depthModes = depthStream.getSensorInfo().getSupportedVideoModes();
-//
-//    openni::VideoMode currentDepth = depthStream.getVideoMode();
-//
-//    std::cout << "Depth Modes: (" << currentDepth.getResolutionX() <<
-//                                     "x" <<
-//                                     currentDepth.getResolutionY() <<
-//                                     " @ " <<
-//                                     currentDepth.getFps() <<
-//                                     "fps " <<
-//                                     formatMap[currentDepth.getPixelFormat()] << ")" << std::endl;
-//
-//    for(int i = 0; i < depthModes.getSize(); i++)
-//    {
-//        std::cout << depthModes[i].getResolutionX() <<
-//                     "x" <<
-//                     depthModes[i].getResolutionY() <<
-//                     " @ " <<
-//                     depthModes[i].getFps() <<
-//                     "fps " <<
-//                     formatMap[depthModes[i].getPixelFormat()] << std::endl;
-//    }
-//
-//    const openni::Array<openni::VideoMode> & rgbModes = rgbStream.getSensorInfo().getSupportedVideoModes();
-//
-//    openni::VideoMode currentRGB = depthStream.getVideoMode();
-//
-//    std::cout << "RGB Modes: (" << currentRGB.getResolutionX() <<
-//                                   "x" <<
-//                                   currentRGB.getResolutionY() <<
-//                                   " @ " <<
-//                                   currentRGB.getFps() <<
-//                                   "fps " <<
-//                                   formatMap[currentRGB.getPixelFormat()] << ")" << std::endl;
-//
-//    for(int i = 0; i < rgbModes.getSize(); i++)
-//    {
-//        std::cout << rgbModes[i].getResolutionX() <<
-//                     "x" <<
-//                     rgbModes[i].getResolutionY() <<
-//                     " @ " <<
-//                     rgbModes[i].getFps() <<
-//                     "fps " <<
-//                     formatMap[rgbModes[i].getPixelFormat()] << std::endl;
-//    }
-}
-
-void SR300_ORB_Interface::setAutoExposure(bool value)
-{
-//    rgbStream.getCameraSettings()->setAutoExposureEnabled(value);
-}
-
-void SR300_ORB_Interface::setAutoWhiteBalance(bool value)
-{
-//    rgbStream.getCameraSettings()->setAutoWhiteBalanceEnabled(value);
-}
-
-bool SR300_ORB_Interface::getAutoExposure()
-{
-//    return rgbStream.getCameraSettings()->getAutoExposureEnabled();
-    return true;
-}
-
-bool SR300_ORB_Interface::getAutoWhiteBalance()
-{
-//    return rgbStream.getCameraSettings()->getAutoWhiteBalanceEnabled();
-    return true;
-}
