@@ -69,8 +69,8 @@ SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps,
         rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newRgbImage, 0);
         depthAlignedToRgbBuffers[i] = std::pair<uint8_t *, int64_t>(newDepthAlignedToRgbImage, 0);
     }
-    double whiteBalance = 3800;//devPtr->get_option(rs::option::color_white_balance);
-    dev->set_option(rs::option::color_white_balance, whiteBalance);
+//    double whiteBalance = 3800;//devPtr->get_option(rs::option::color_white_balance);
+//    dev->set_option(rs::option::color_white_balance, whiteBalance);
     dev->set_option(rs::option::color_enable_auto_exposure, 1);
     dev->start();
     auto all_stream_feeder = [this]() {

@@ -89,7 +89,7 @@ RosInterface::RosInterface(std::string argInDepthCameraYamlPath)// = std::string
         pointCloudMsg.is_dense = false;// default false maybe it is safer even if there is no invalid point in the data
     }
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    pSLAM = new ORB_SLAM2::System("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.txt",
+    pSLAM = new ORB_SLAM2::System("/home/gao/Downloads/ORB_SLAM2/Vocabulary/ORBvoc.bin",
                                   depthCameraConfigYamlPath, ORB_SLAM2::System::RGBD,false);
 //                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml", ORB_SLAM2::System::RGBD,false);
 //                                "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_R200.yaml", ORB_SLAM2::System::RGBD,false);
