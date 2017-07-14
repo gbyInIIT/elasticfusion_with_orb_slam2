@@ -25,6 +25,10 @@ Please cite this work if you make use of our system in any of your own endeavors
 Firstly, add [nVidia's official CUDA repository](https://developer.nvidia.com/cuda-downloads) to your apt sources, then run the following command to pull in most dependencies from the official repos:
 
 ```bash
+sudo apt-get install -y cmake-qt-gui git build-essential libusb-1.0-0-dev libudev-dev freeglut3-dev libglew-dev libsuitesparse-dev libeigen3-dev zlib1g-dev libjpeg-dev
+```
+
+```bash
 sudo apt-get install -y cmake-qt-gui git build-essential libusb-1.0-0-dev libudev-dev openjdk-7-jdk freeglut3-dev libglew-dev cuda-7-5 libsuitesparse-dev libeigen3-dev zlib1g-dev libjpeg-dev
 ```
 
@@ -44,7 +48,7 @@ sudo ln -sf /usr/include/eigen3/Eigen /usr/include/Eigen
 sudo ln -sf /usr/include/eigen3/unsupported /usr/include/unsupported
 ```
 
-***invalid use of incomplete type â€˜const struct Eigen ...***
+***invalid use of incomplete type ‘const struct Eigen ...***
 
 Pangolin must be installed AFTER all the other libraries to make use of optional dependencies.
 
