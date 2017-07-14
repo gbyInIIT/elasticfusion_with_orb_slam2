@@ -144,6 +144,9 @@ target_link_libraries(gen_image_and_camera_pose
         ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
         )
 set(CMAKE_VERBOSE_MAKEFILE on)
+
+add_dependencies(HandEyeCalibrate efusion)
 add_dependencies(ElasticFusion efusion)
 add_dependencies(ElasticFusionRos efusion)
+add_dependencies(ElasticFusionSR300 efusion)
 add_dependencies(ElasticFusionSR300_ORB efusion)

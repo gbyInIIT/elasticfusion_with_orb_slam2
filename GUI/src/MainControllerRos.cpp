@@ -35,7 +35,8 @@ MainControllerRos::MainControllerRos(int argc, char * argv[])
 
 //    std::string calibrationFile;
 //    Parse::get().arg(argc, argv, "-cal", calibrationFile);
-    RosInterface * asus = new RosInterface("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_ZR300.yaml");
+//    RosInterface * asus = new RosInterface("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_ZR300.yaml");
+    RosInterface * asus = new RosInterface("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml");
     Resolution::getInstance(asus->cameraInfo.width, asus->cameraInfo.height);
     Intrinsics::getInstance(asus->cameraInfo.K[0],
                             asus->cameraInfo.K[4],
