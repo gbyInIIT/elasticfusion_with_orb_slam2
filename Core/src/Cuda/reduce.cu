@@ -91,41 +91,41 @@ __inline__  __device__ JtJJtrSE3 warpReduceSum(JtJJtrSE3 val)
 {
     for(int offset = warpSize / 2; offset > 0; offset /= 2)
     {
-        val.aa += __shfl_down(val.aa, offset);
-        val.ab += __shfl_down(val.ab, offset);
-        val.ac += __shfl_down(val.ac, offset);
-        val.ad += __shfl_down(val.ad, offset);
-        val.ae += __shfl_down(val.ae, offset);
-        val.af += __shfl_down(val.af, offset);
-        val.ag += __shfl_down(val.ag, offset);
+        val.aa += __shfl_down_sync(0xffffffff,val.aa, offset);
+        val.ab += __shfl_down_sync(0xffffffff,val.ab, offset);
+        val.ac += __shfl_down_sync(0xffffffff,val.ac, offset);
+        val.ad += __shfl_down_sync(0xffffffff,val.ad, offset);
+        val.ae += __shfl_down_sync(0xffffffff,val.ae, offset);
+        val.af += __shfl_down_sync(0xffffffff,val.af, offset);
+        val.ag += __shfl_down_sync(0xffffffff,val.ag, offset);
 
-        val.bb += __shfl_down(val.bb, offset);
-        val.bc += __shfl_down(val.bc, offset);
-        val.bd += __shfl_down(val.bd, offset);
-        val.be += __shfl_down(val.be, offset);
-        val.bf += __shfl_down(val.bf, offset);
-        val.bg += __shfl_down(val.bg, offset);
+        val.bb += __shfl_down_sync(0xffffffff,val.bb, offset);
+        val.bc += __shfl_down_sync(0xffffffff,val.bc, offset);
+        val.bd += __shfl_down_sync(0xffffffff,val.bd, offset);
+        val.be += __shfl_down_sync(0xffffffff,val.be, offset);
+        val.bf += __shfl_down_sync(0xffffffff,val.bf, offset);
+        val.bg += __shfl_down_sync(0xffffffff,val.bg, offset);
 
-        val.cc += __shfl_down(val.cc, offset);
-        val.cd += __shfl_down(val.cd, offset);
-        val.ce += __shfl_down(val.ce, offset);
-        val.cf += __shfl_down(val.cf, offset);
-        val.cg += __shfl_down(val.cg, offset);
+        val.cc += __shfl_down_sync(0xffffffff,val.cc, offset);
+        val.cd += __shfl_down_sync(0xffffffff,val.cd, offset);
+        val.ce += __shfl_down_sync(0xffffffff,val.ce, offset);
+        val.cf += __shfl_down_sync(0xffffffff,val.cf, offset);
+        val.cg += __shfl_down_sync(0xffffffff,val.cg, offset);
 
-        val.dd += __shfl_down(val.dd, offset);
-        val.de += __shfl_down(val.de, offset);
-        val.df += __shfl_down(val.df, offset);
-        val.dg += __shfl_down(val.dg, offset);
+        val.dd += __shfl_down_sync(0xffffffff,val.dd, offset);
+        val.de += __shfl_down_sync(0xffffffff,val.de, offset);
+        val.df += __shfl_down_sync(0xffffffff,val.df, offset);
+        val.dg += __shfl_down_sync(0xffffffff,val.dg, offset);
 
-        val.ee += __shfl_down(val.ee, offset);
-        val.ef += __shfl_down(val.ef, offset);
-        val.eg += __shfl_down(val.eg, offset);
+        val.ee += __shfl_down_sync(0xffffffff,val.ee, offset);
+        val.ef += __shfl_down_sync(0xffffffff,val.ef, offset);
+        val.eg += __shfl_down_sync(0xffffffff,val.eg, offset);
 
-        val.ff += __shfl_down(val.ff, offset);
-        val.fg += __shfl_down(val.fg, offset);
+        val.ff += __shfl_down_sync(0xffffffff,val.ff, offset);
+        val.fg += __shfl_down_sync(0xffffffff,val.fg, offset);
 
-        val.residual += __shfl_down(val.residual, offset);
-        val.inliers += __shfl_down(val.inliers, offset);
+        val.residual += __shfl_down_sync(0xffffffff,val.residual, offset);
+        val.inliers += __shfl_down_sync(0xffffffff,val.inliers, offset);
     }
 
     return val;
@@ -188,20 +188,20 @@ __inline__  __device__ JtJJtrSO3 warpReduceSum(JtJJtrSO3 val)
 {
     for(int offset = warpSize / 2; offset > 0; offset /= 2)
     {
-        val.aa += __shfl_down(val.aa, offset);
-        val.ab += __shfl_down(val.ab, offset);
-        val.ac += __shfl_down(val.ac, offset);
-        val.ad += __shfl_down(val.ad, offset);
+        val.aa += __shfl_down_sync(0xffffffff,val.aa, offset);
+        val.ab += __shfl_down_sync(0xffffffff,val.ab, offset);
+        val.ac += __shfl_down_sync(0xffffffff,val.ac, offset);
+        val.ad += __shfl_down_sync(0xffffffff,val.ad, offset);
 
-        val.bb += __shfl_down(val.bb, offset);
-        val.bc += __shfl_down(val.bc, offset);
-        val.bd += __shfl_down(val.bd, offset);
+        val.bb += __shfl_down_sync(0xffffffff,val.bb, offset);
+        val.bc += __shfl_down_sync(0xffffffff,val.bc, offset);
+        val.bd += __shfl_down_sync(0xffffffff,val.bd, offset);
 
-        val.cc += __shfl_down(val.cc, offset);
-        val.cd += __shfl_down(val.cd, offset);
+        val.cc += __shfl_down_sync(0xffffffff,val.cc, offset);
+        val.cd += __shfl_down_sync(0xffffffff,val.cd, offset);
 
-        val.residual += __shfl_down(val.residual, offset);
-        val.inliers += __shfl_down(val.inliers, offset);
+        val.residual += __shfl_down_sync(0xffffffff,val.residual, offset);
+        val.inliers += __shfl_down_sync(0xffffffff,val.inliers, offset);
     }
 
     return val;
@@ -681,8 +681,8 @@ __inline__  __device__ int2 warpReduceSum(int2 val)
 {
     for(int offset = warpSize / 2; offset > 0; offset /= 2)
     {
-        val.x += __shfl_down(val.x, offset);
-        val.y += __shfl_down(val.y, offset);
+        val.x += __shfl_down_sync(0xffffffff,val.x, offset);
+        val.y += __shfl_down_sync(0xffffffff,val.y, offset);
     }
 
     return val;

@@ -11,7 +11,7 @@
  * unless explicitly stated.  By downloading this file you agree to 
  * comply with these terms.
  *
- * If you wish to use any of this code for commercial purposes then 
+ * If you wish to use any of this code for commercial purposes then
  * please email researchcontracts.engineering@imperial.ac.uk.
  *
  */
@@ -38,7 +38,7 @@ void main()
     }
     else
     {
-//        FragColor = float(value) / 1000.0f / 8.f;
-        FragColor = float(value) / 1000.0f;
+        FragColor = float(value) / 1000.0f / 8.f;
+//        FragColor = float(value) / 1000.0f;
     }
 }
