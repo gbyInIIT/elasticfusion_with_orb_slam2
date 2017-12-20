@@ -95,7 +95,7 @@ MainControllerRos::MainControllerRos(int argc, char * argv[])
 
     gui->drawDeforms->Ref().Set(false);
     gui->drawColors->Ref().Set(true);
-    gui->drawPoints->Ref().Set(true);
+    gui->drawPoints->Ref().Set(false);
     gui->flipColors->Ref().Set(logReader->flipColors);
     gui->rgbOnly->Ref().Set(false);
     gui->pyramid->Ref().Set(true);
