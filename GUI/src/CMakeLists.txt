@@ -55,10 +55,10 @@ add_definitions(-Dlinux=1)
 add_executable(ElasticFusion
                Main.cpp MainController.cpp Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReader.cpp Tools/OpenNI2Interface.cpp
 )
-add_executable(ElasticFusionSR300
-        MainSR300.cpp MainControllerSR300.cpp
-        Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReaderSR300.cpp Tools/SR300Interface.cpp
-        )
+#add_executable(ElasticFusionSR300
+#        MainSR300.cpp MainControllerSR300.cpp
+#        Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReaderSR300.cpp Tools/SR300Interface.cpp
+#        )
 
 add_executable(ElasticFusionSR300_ORB
         MainSR300_ORB.cpp MainControllerSR300_ORB.cpp
@@ -88,13 +88,13 @@ target_link_libraries(ElasticFusion
         realsense
 )
 
-target_link_libraries(ElasticFusionSR300
-        ${ZLIB_LIBRARY}
-        ${Pangolin_LIBRARIES}
-        ${CUDA_LIBRARIES}
-        ${EFUSION_LIBRARY}
-        realsense
-        )
+#target_link_libraries(ElasticFusionSR300
+#        ${ZLIB_LIBRARY}
+#        ${Pangolin_LIBRARIES}
+#        ${CUDA_LIBRARIES}
+#        ${EFUSION_LIBRARY}
+#        realsense
+#        )
 
 target_link_libraries(ElasticFusionSR300_ORB
         ${ZLIB_LIBRARY}

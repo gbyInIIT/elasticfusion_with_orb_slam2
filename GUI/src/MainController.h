@@ -23,7 +23,6 @@
 #include "Tools/GroundTruthOdometry.h"
 #include "Tools/RawLogReader.h"
 #include "Tools/LiveLogReader.h"
-#include "Tools/LiveLogReaderSR300.h"
 
 #ifndef MAINCONTROLLER_H_
 #define MAINCONTROLLER_H_
