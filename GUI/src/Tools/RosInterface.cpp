@@ -29,6 +29,9 @@
 #include <tf/transform_broadcaster.h>
 //#include <turtlesim/Pose.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../third_party/stb_image_write.h"
+
 //RosInterface::RosInterface(std::string argInDepthCameraYamlPath = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml"))
 RosInterface::RosInterface(std::string argInDepthCameraYamlPath)// = std::string("/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Realsense_SR300.yaml"))
  : width(-1),
@@ -96,6 +99,7 @@ RosInterface::RosInterface(std::string argInDepthCameraYamlPath)// = std::string
 //                           "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Asus.yaml", ORB_SLAM2::System::RGBD,false);
 //                                  "/home/gao/Downloads/ORB_SLAM2/Examples/ROS/ORB_SLAM2/Arrfou.yaml", ORB_SLAM2::System::RGBD,false);
     auto rosAction = [this]() {
+        isRosOk.assign(true);
         int argc = 0;
         ros::init(argc, NULL, "depth_rgb_elasticfusion_sub");
         ros::start();
@@ -164,6 +168,10 @@ RosInterface::RosInterface(std::string argInDepthCameraYamlPath)// = std::string
         }
         printf("ROS exited.\n");
         fflush(stdout);
+        isRuningDataDaemon.assign(false);
+        while(isRosOk.getValue()) {
+            usleep(1000);
+        }
         pSLAM->Shutdown();
         ros::shutdown();
     };
@@ -171,6 +179,56 @@ RosInterface::RosInterface(std::string argInDepthCameraYamlPath)// = std::string
     while (!isCameraInitialized.getValue()) {
         usleep(10000);
     }
+    auto saveImageDaemonAction = [this]() {
+        ThreadMutexObject<int> saveImageNumber(0);
+
+        isRuningDataDaemon.assign(true);
+
+        printf("Save image daemon running...\n");
+        fflush(stdout);
+//        signal(SIGTSTP, mySigintHandler);
+        FILE * pfile = fopen("filename_and_xyzabc.csv", "w");
+        int lastSaveAllFrameIndex = -1;
+        auto saveImageAction = [](std::string fileName, const int width, const int height, const void * data) {
+            stbi_write_png(fileName.c_str(), width, height, 3, data, width * 3);
+        };
+        while (isRuningDataDaemon.getValue()) {
+            const int copyAllFrameIndex = this->latestAllFrameIndex.getValue();
+            if (copyAllFrameIndex != lastSaveAllFrameIndex) {
+                const int bufferIndex = copyAllFrameIndex % this->numBuffers;
+                std::stringstream ss;
+                ss << "slam_" << setw(6) << setfill('0') << saveImageNumber.getValue() << ".png";
+                std::string fileName = ss.str();
+                std::thread saveImageThread (saveImageAction, fileName, this->width, this->height, this->rgbBuffers[bufferIndex].first);
+                saveImageThread.detach();
+                saveImageNumber.assign(saveImageNumber.getValue() + 1);
+
+                Eigen::Matrix4f cameraToObjectTransMat = this->cameraToObjectTransMatBuffers[bufferIndex].first;
+                tf::Matrix3x3 cameraToObjectRotMat(cameraToObjectTransMat(0, 0), cameraToObjectTransMat(0, 1), cameraToObjectTransMat(0, 2),
+                                                   cameraToObjectTransMat(1, 0), cameraToObjectTransMat(1, 1), cameraToObjectTransMat(1, 2),
+                                                   cameraToObjectTransMat(2, 0), cameraToObjectTransMat(2, 1), cameraToObjectTransMat(2, 2));
+                tfScalar x = cameraToObjectTransMat(0, 3);
+                tfScalar y = cameraToObjectTransMat(1, 3);
+                tfScalar z = cameraToObjectTransMat(2, 3);
+                tfScalar a, b, c;
+                cameraToObjectRotMat.getEulerYPR(a, b, c);
+                fprintf(pfile, "%s,%e,%e,%e,%e,%e,%e\n", fileName.c_str(), x, y, z, a, b, c);
+                lastSaveAllFrameIndex = copyAllFrameIndex;
+            }
+            usleep(100000);
+        }
+        fclose(pfile);
+        printf("Save image daemon running done.\n");
+        fflush(stdout);
+        printf("Waiting for detached image saving thread to terminate.\n");
+        fflush(stdout);
+        usleep(3000000);
+        printf("Waiting for detached image saving thread to terminate done.\n");
+        fflush(stdout);
+        isRosOk.assign(false);
+    };
+    std::thread saveImageDaemonThread (saveImageDaemonAction);
+    saveImageDaemonThread.detach();
 }
 
 void RosInterface::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cameraInfoConstPtr) {

@@ -60,6 +60,8 @@ public:
     ThreadMutexObject<int> latestPointCloudIndex;
     ORB_SLAM2::System *pSLAM;
     std::string depthCameraConfigYamlPath;
+    ThreadMutexObject<bool> isRosOk;
+    ThreadMutexObject<bool> isRuningDataDaemon;//isDisplayImage;
 
 private:
     std::thread rosThread;
