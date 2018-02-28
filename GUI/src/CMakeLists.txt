@@ -70,14 +70,14 @@ add_executable(ElasticFusionRos
         Tools/GroundTruthOdometry.cpp Tools/RawLogReader.cpp Tools/LiveLogReaderRos.cpp Tools/RosInterface.cpp
         )
 
-add_executable(gen_image_and_camera_pose
-        gen_image_and_camera_pose.cpp
-        Tools/RosInterface.cpp
-        )
-
-add_executable(HandEyeCalibrate
-        MainCalibration.cpp Tools/RosInterface.cpp
-        )
+#add_executable(gen_image_and_camera_pose
+#        gen_image_and_camera_pose.cpp
+#        Tools/RosInterface.cpp
+#        )
+#
+#add_executable(HandEyeCalibrate
+#        MainCalibration.cpp Tools/RosInterface.cpp
+#        )
 
 target_link_libraries(ElasticFusion
                       ${ZLIB_LIBRARY}
@@ -121,31 +121,31 @@ target_link_libraries(ElasticFusionRos
         ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
         )
 
-target_link_libraries(HandEyeCalibrate
-        ${ZLIB_LIBRARY}
-        ${Pangolin_LIBRARIES}
-        ${CUDA_LIBRARIES}
-        ${EFUSION_LIBRARY}
-        #        ${OpenCV_LIBRARIES}
-        ${catkin_LIBRARIES}
-        ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
-        ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
-        ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
-        )
-
-target_link_libraries(gen_image_and_camera_pose
-        ${ZLIB_LIBRARY}
-        ${Pangolin_LIBRARIES}
+#target_link_libraries(HandEyeCalibrate
+#        ${ZLIB_LIBRARY}
+#        ${Pangolin_LIBRARIES}
 #        ${CUDA_LIBRARIES}
 #        ${EFUSION_LIBRARY}
-        ${catkin_LIBRARIES}
-        ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
-        ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
-        ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
-        )
+#        #        ${OpenCV_LIBRARIES}
+#        ${catkin_LIBRARIES}
+#        ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
+#        ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+#        ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
+#        )
+#
+#target_link_libraries(gen_image_and_camera_pose
+#        ${ZLIB_LIBRARY}
+#        ${Pangolin_LIBRARIES}
+##        ${CUDA_LIBRARIES}
+##        ${EFUSION_LIBRARY}
+#        ${catkin_LIBRARIES}
+#        ${ORB_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
+#        ${ORB_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+#        ${ORB_SOURCE_DIR}/lib/libORB_SLAM2.so
+#        )
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-add_dependencies(HandEyeCalibrate efusion)
+#add_dependencies(HandEyeCalibrate efusion)
 add_dependencies(ElasticFusion efusion)
 add_dependencies(ElasticFusionRos efusion)
 #add_dependencies(ElasticFusionSR300 efusion)

@@ -227,8 +227,9 @@ RosInterface::RosInterface(std::string argInDepthCameraYamlPath)// = std::string
         fflush(stdout);
         isRosOk.assign(false);
     };
-    std::thread saveImageDaemonThread (saveImageDaemonAction);
-    saveImageDaemonThread.detach();
+//    std::thread saveImageDaemonThread (saveImageDaemonAction);
+//    saveImageDaemonThread.detach();
+    isRosOk.assign(false);
 }
 
 void RosInterface::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& cameraInfoConstPtr) {
