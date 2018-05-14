@@ -10,6 +10,12 @@
 #include <librealsense/rs.hpp>
 #include "System.h"
 
+#include <ros/ros.h>
+#include <cv_bridge/cv_bridge.h>
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+#include <tf/transform_broadcaster.h>
 class SR300_ORB_Interface
 {
 public:
@@ -37,12 +43,14 @@ public:
     static const int numBuffers = 1000;
     ThreadMutexObject<int> latestAllFrameIndex;
     ThreadMutexObject<bool> shouldStop;
+    ros::Time rgbImageRosTimeBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
     std::pair<uint8_t *, int64_t> depthAlignedToRgbBuffers[numBuffers];
     std::pair<Eigen::Matrix4f, int64_t> cameraToObjectTransMatBuffers[numBuffers];
     float fx, fy, cx, cy;
 
 private:
+    std::thread rosThread;
     rs::context ctx;
     rs::device * dev;
     std::thread allFrameDaemonThread;
