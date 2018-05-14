@@ -104,11 +104,72 @@ SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps,
                 cameraToObjectTransMatBuffers[bufferIndex].first = transMat.inverse();
                 cameraToObjectTransMatBuffers[bufferIndex].second = lastAllFrameTime;
             }
+            rgbImageRosTimeBuffers[bufferIndex] = ros::Time::now();
             latestAllFrameIndex++;
             usleep(1000);
         }
     };
     allFrameDaemonThread = std::move(std::thread(all_stream_feeder));
+
+    auto rosAction = [this]() {
+        int argc = 0;
+        ros::init(argc, NULL, "camera_pose_sub");
+        ros::start();
+        ros::NodeHandle nh;
+        ros::Publisher posePub = nh.advertise<geometry_msgs::PoseStamped>("orb_slam2/camera_pose", 10);
+        int previousPointCloudIndex = -1;
+        tf::TransformBroadcaster br;
+        tf::Transform transform;
+        transform.setOrigin( tf::Vector3(0, 0, 0.0) );
+        tf::Quaternion q;
+        q.setRPY(0, 0, 0);
+        transform.setRotation(q);
+        ros::Rate rate(30);
+        while(ros::ok()) {
+            ros::spinOnce();
+//            ros::Time current_time = ros::Time::now();
+            if (latestAllFrameIndex.getValue() >= 0) {
+                const int bufferIndex = latestAllFrameIndex.getValue() % numBuffers;
+                Eigen::Matrix4f cameraToObjectTransMat = cameraToObjectTransMatBuffers[bufferIndex].first;
+                ros::Time imageRosTime = rgbImageRosTimeBuffers[bufferIndex];
+                tf::Matrix3x3 cameraToObjectRotMat(cameraToObjectTransMat(0, 0), cameraToObjectTransMat(0, 1), cameraToObjectTransMat(0, 2),
+                                                   cameraToObjectTransMat(1, 0), cameraToObjectTransMat(1, 1), cameraToObjectTransMat(1, 2),
+                                                   cameraToObjectTransMat(2, 0), cameraToObjectTransMat(2, 1), cameraToObjectTransMat(2, 2));
+                tf::Vector3 cameraToWorldTranslationVec(cameraToObjectTransMat(0, 3), cameraToObjectTransMat(1, 3), cameraToObjectTransMat(2, 3));
+                tf::Transform cameraToCloudTrans(cameraToObjectRotMat, cameraToWorldTranslationVec);
+//                br.sendTransform(tf::StampedTransform(cameraToCloudTrans, current_time, "iiwa_base", "realsense_camera"));
+                geometry_msgs::Pose cameraPose;
+                geometry_msgs::Point cameraPosePoint;
+                geometry_msgs::Quaternion cameraPoseQuaternion;
+                cameraPosePoint.x = cameraToWorldTranslationVec.x();
+                cameraPosePoint.y = cameraToWorldTranslationVec.y();
+                cameraPosePoint.z = cameraToWorldTranslationVec.z();
+                tf::Quaternion tmpQ;
+                cameraToObjectRotMat.getRotation(tmpQ);
+//                tf::Matrix3x3 cameraToCloudRotMatInv = cameraToObjectRotMat.inverse();
+//                cameraToCloudRotMatInv.getRotation(tmpQ);
+                cameraPoseQuaternion.x = tmpQ.x();
+                cameraPoseQuaternion.y = tmpQ.y();
+                cameraPoseQuaternion.z = tmpQ.z();
+                cameraPoseQuaternion.w = tmpQ.w();
+                cameraPose.position = cameraPosePoint;
+                cameraPose.orientation = cameraPoseQuaternion;
+                geometry_msgs::PoseStamped cameraPoseStamped;
+                cameraPoseStamped.header.frame_id = "world";
+                cameraPoseStamped.header.stamp = imageRosTime;
+                cameraPoseStamped.header.seq = 0;
+                cameraPoseStamped.pose = cameraPose;
+                posePub.publish(cameraPoseStamped);
+            }
+//            usleep(100);
+            rate.sleep();
+        }
+        printf("ROS exited.\n");
+        fflush(stdout);
+        pSLAM->Shutdown();
+        ros::shutdown();
+    };
+    rosThread = std::move(std::thread(rosAction));
 }
 
 SR300_ORB_Interface::~SR300_ORB_Interface()
