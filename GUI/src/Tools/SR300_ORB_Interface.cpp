@@ -104,7 +104,7 @@ SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps,
                 cameraToObjectTransMatBuffers[bufferIndex].first = transMat.inverse();
                 cameraToObjectTransMatBuffers[bufferIndex].second = lastAllFrameTime;
             }
-            rgbImageRosTimeBuffers[bufferIndex] = ros::Time::now();
+//            rgbImageRosTimeBuffers[bufferIndex] = ros::Time::now();
             latestAllFrameIndex++;
             usleep(1000);
         }
@@ -169,7 +169,7 @@ SR300_ORB_Interface::SR300_ORB_Interface(int inWidth, int inHeight, int fps,
         pSLAM->Shutdown();
         ros::shutdown();
     };
-    rosThread = std::move(std::thread(rosAction));
+//    rosThread = std::move(std::thread(rosAction));
 }
 
 SR300_ORB_Interface::~SR300_ORB_Interface()
